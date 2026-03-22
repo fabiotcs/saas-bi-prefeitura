@@ -1,0 +1,138 @@
+execution:
+  epicId: "EPIC-1"
+  epicName: "Fundação — Core, Autenticação e Usuários"
+  epicIndex: 1
+  template: "epic-orchestration"
+  storyBasePath: "docs/stories"
+  mode: interactive
+
+  # Configurações de execução
+  config:
+    maxConcurrency: 2
+    worktreeIsolation: true
+    gatePolicy: strict
+    requireIntegrationReview: true
+
+  # Stories organizadas em waves internas do EPIC-1
+  waves:
+    - wave: 1
+      name: "Fundação Técnica"
+      description: "Scaffolding + Identidade Visual — base para tudo"
+      stories:
+        - id: "1.1"
+          file: "1.1.scaffolding.md"
+          branch: "feat/1.1-scaffolding"
+          executor: "@dev"
+          quality_gate: "@architect"
+          parallel: false
+          blockers: []
+
+        - id: "1.2"
+          file: "1.2.brand-layout.md"
+          branch: "feat/1.2-brand-layout"
+          executor: "@dev"
+          quality_gate: "@qa"
+          parallel: false
+          blockers: ["1.1"]
+
+    - wave: 2
+      name: "Schema e Infraestrutura de Auth"
+      description: "Schema do banco e providers de segurança"
+      stories:
+        - id: "1.3"
+          file: "1.3.schema-foundation.md"
+          branch: "feat/1.3-schema-foundation"
+          executor: "@data-engineer"
+          quality_gate: "@dev"
+          parallel: false
+          blockers: ["1.1"]
+
+    - wave: 3
+      name: "Autenticação e Segurança"
+      description: "Auth JWT + Biometria + Liveness + Histórico + 2FA"
+      stories:
+        - id: "1.4"
+          file: "1.4.auth-biometria.md"
+          branch: "feat/1.4-auth-biometria"
+          executor: "@dev"
+          quality_gate: "@architect"
+          parallel: false
+          blockers: ["1.3"]
+
+        - id: "1.5"
+          file: "1.5.liveness-detection.md"
+          branch: "feat/1.5-liveness-detection"
+          executor: "@dev"
+          quality_gate: "@architect"
+          parallel: false
+          blockers: ["1.4"]
+
+        - id: "1.6"
+          file: "1.6.biometric-history.md"
+          branch: "feat/1.6-biometric-history"
+          executor: "@dev"
+          quality_gate: "@qa"
+          parallel: true
+          blockers: ["1.4"]
+
+        - id: "1.7"
+          file: "1.7.two-factor.md"
+          branch: "feat/1.7-two-factor"
+          executor: "@dev"
+          quality_gate: "@qa"
+          parallel: true
+          blockers: ["1.3"]
+
+    - wave: 4
+      name: "Usuários e Perfis"
+      description: "CRUD de usuários + perfis de acesso + guards"
+      stories:
+        - id: "1.8"
+          file: "1.8.user-management.md"
+          branch: "feat/1.8-user-management"
+          executor: "@dev"
+          quality_gate: "@qa"
+          parallel: false
+          blockers: ["1.4", "1.7"]
+
+  # Gates de validação entre waves
+  wave_gates:
+    - after_wave: 1
+      gate_agent: "@architect"
+      checks:
+        - "Next.js 14 roda sem erros"
+        - "TypeScript strict sem erros"
+        - "axios centralizado em src/lib/api.ts"
+        - "Prisma conecta ao PostgreSQL"
+
+    - after_wave: 2
+      gate_agent: "@data-engineer"
+      checks:
+        - "Migration executa sem erros"
+        - "Trigger de imutabilidade ativo em audit_logs"
+        - "Trigger de imutabilidade ativo em biometric_records"
+        - "Seed cria usuário admin funcional"
+
+    - after_wave: 3
+      gate_agent: "@architect"
+      checks:
+        - "Login end-to-end funcional (senha → biometria → JWT)"
+        - "Liveness detection recusa foto estática"
+        - "2FA gera e valida OTP corretamente"
+        - "BiometricRecord salvo com todos os campos"
+
+    - after_wave: 4
+      gate_agent: "@qa"
+      checks:
+        - "CRUD de usuários funcional com todos os 6 campos obrigatórios"
+        - "4 perfis com permissões distintas e demonstráveis"
+        - "AUDIT_VIEWER redirecionado para painel restrito"
+        - "CPF válido com algoritmo de dígito verificador"
+
+  # Estado inicial
+  state:
+    status: ready
+    current_wave: 1
+    completed_stories: []
+    failed_stories: []
+    started_at: null
