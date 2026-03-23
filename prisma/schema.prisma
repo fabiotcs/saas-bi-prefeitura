@@ -68,6 +68,17 @@ enum BudgetCommitmentStatus {
   CANCELLED
 }
 
+enum EstablishmentStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum BillingMode {
+  CENTRALIZED
+  DECENTRALIZED
+}
+
 enum OrderStatus {
   DRAFT
   OPEN
@@ -148,6 +159,8 @@ model User {
   stockMovements           StockMovement[]    @relation("StockMovements")
   approvedAdditives        BudgetAdditive[]   @relation("ApprovedAdditives")
   registeredCommitments    BudgetCommitment[] @relation("RegisteredCommitments")
+  establishmentFavorites   EstablishmentFavorite[]
+  createdApiKeys           ApiKey[]           @relation("CreatedApiKeys")
 
   @@index([email])
 }
@@ -536,4 +549,97 @@ model BudgetCommitment {
 
   @@index([contractId])
   @@index([secretaryId])
+}
+
+// ============================================
+// Models — Estabelecimentos (Rede Credenciada)
+// ============================================
+
+model Establishment {
+  id                  String              @id @default(cuid())
+  name                String
+  cnpj                String              @unique
+  address             String
+  city                String
+  state               String
+  lat                 Float?
+  lng                 Float?
+  phone               String
+  email               String?
+  servicesDescription String
+  ordersCompleted     Int                 @default(0)
+  rating              Float               @default(0)
+  status              EstablishmentStatus @default(ACTIVE)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  favorites           EstablishmentFavorite[]
+
+  @@index([status])
+  @@index([cnpj])
+}
+
+model EstablishmentFavorite {
+  id              String        @id @default(cuid())
+  userId          String
+  establishmentId String
+  createdAt       DateTime      @default(now())
+
+  user            User          @relation(fields: [userId], references: [id])
+  establishment   Establishment @relation(fields: [establishmentId], references: [id])
+
+  @@unique([userId, establishmentId])
+  @@index([userId])
+  @@index([establishmentId])
+}
+
+// ============================================
+// Models — Configurações do Sistema
+// ============================================
+
+model SystemSettings {
+  id                                  String      @id @default("system")
+  billingMode                         BillingMode @default(CENTRALIZED)
+  billingClosingDay                   Int         @default(25)
+  requireManagerApproval              Boolean     @default(true)
+  requireBudgetValidation             Boolean     @default(true)
+  minimumProposalsForApproval         Int         @default(3)
+  restrictOrderCreationToVerifiedUsers Boolean    @default(false)
+  updatedAt                           DateTime    @updatedAt
+}
+
+// ============================================
+// Models — API Keys & Integrações
+// ============================================
+
+model ApiKey {
+  id          String       @id @default(cuid())
+  name        String
+  keyHash     String       @unique
+  permissions String[]
+  lastUsedAt  DateTime?
+  revoked     Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  createdById String
+  createdBy   User         @relation("CreatedApiKeys", fields: [createdById], references: [id])
+
+  callLogs    ApiCallLog[]
+
+  @@index([createdById])
+  @@index([revoked])
+}
+
+model ApiCallLog {
+  id             String   @id @default(cuid())
+  endpoint       String
+  method         String
+  statusCode     Int
+  responseTimeMs Int
+  occurredAt     DateTime @default(now())
+  ipAddress      String
+  apiKeyId       String
+  apiKey         ApiKey   @relation(fields: [apiKeyId], references: [id])
+
+  @@index([apiKeyId])
+  @@index([occurredAt])
 }
