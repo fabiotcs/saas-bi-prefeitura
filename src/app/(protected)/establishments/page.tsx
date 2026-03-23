@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRequireRole } from '@/hooks/useRequireRole'
@@ -13,6 +14,11 @@ import { EstablishmentFilters } from '@/components/establishments/EstablishmentF
 import { EstablishmentForm } from '@/components/establishments/EstablishmentForm'
 import { Button } from '@/components/ui/button'
 
+const EstablishmentMap = dynamic(
+  () => import('@/components/establishments/EstablishmentMap'),
+  { ssr: false, loading: () => <div className="h-64 rounded-xl border bg-muted animate-pulse" /> },
+)
+
 export default function EstablishmentsPage() {
   useRequireRole(['MAIN_MANAGER', 'SECRETARY_MANAGER', 'SECRETARY_USER', 'AUDIT_VIEWER'], '/dashboard')
 
@@ -23,6 +29,8 @@ export default function EstablishmentsPage() {
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [showForm, setShowForm] = useState(false)
+  const [showMap, setShowMap] = useState(true)
+  const [selectedMapId, setSelectedMapId] = useState<string | undefined>()
 
   const { data, isLoading } = useQuery({
     queryKey: ['establishments', search, city, state],
@@ -63,6 +71,35 @@ export default function EstablishmentsPage() {
           />
         </div>
       )}
+
+      {/* Map toggle + Map */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <Button
+            variant={showMap ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setShowMap((v) => !v)}
+          >
+            {showMap ? '🗺 Ocultar Mapa' : '🗺 Ver Mapa'}
+          </Button>
+          {showMap && data?.data && (
+            <span className="text-xs text-muted-foreground">
+              {data.data.filter((e) => e.lat != null).length} de {data.data.length} no mapa
+            </span>
+          )}
+        </div>
+        {showMap && (
+          <EstablishmentMap
+            establishments={data?.data ?? []}
+            selectedId={selectedMapId}
+            onSelect={(id) => {
+              setSelectedMapId(id)
+              router.push(`/establishments/${id}`)
+            }}
+            height="360px"
+          />
+        )}
+      </div>
 
       {/* Filters */}
       <EstablishmentFilters
