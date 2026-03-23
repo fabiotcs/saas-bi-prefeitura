@@ -43,6 +43,37 @@ enum TwoFactorAction {
   SUBMIT_ADDITIVE
 }
 
+enum OrderStatus {
+  DRAFT
+  OPEN
+  IN_QUOTATION
+  APPROVED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderCategory {
+  MATERIAL
+  SERVICE
+  EQUIPMENT
+}
+
+enum ChatSenderType {
+  PREFECTURE
+  ESTABLISHMENT
+}
+
+enum TimelineStep {
+  CREATED
+  QUOTATION_OPENED
+  QUOTATION_CLOSED
+  APPROVED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
 // ============================================
 // Models — Configuration
 // ============================================
@@ -80,10 +111,15 @@ model User {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  sessions          Session[]
-  twoFactorRequests TwoFactorRequest[]
-  auditLogs         AuditLog[]
-  biometricRecords  BiometricRecord[]
+  sessions                 Session[]
+  twoFactorRequests        TwoFactorRequest[]
+  auditLogs                AuditLog[]
+  biometricRecords         BiometricRecord[]
+  createdOrders            Order[]            @relation("CreatedOrders")
+  timelineEntries          OrderTimeline[]    @relation("TimelineUser")
+  receivedDeliveries       DeliveryRecord[]   @relation("ReceivedDeliveries")
+  registeredNonConformities NonConformity[]   @relation("RegisteredNonConformities")
+  sentMessages             ChatMessage[]      @relation("SentMessages")
 
   @@index([email])
 }
@@ -150,4 +186,163 @@ model BiometricRecord {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+// ============================================
+// Models — Secretarias
+// ============================================
+
+model Secretary {
+  id                  String      @id @default(uuid())
+  name                String      @unique
+  phone               String
+  cnpj                String      @unique
+  description         String?
+  secretaryPersonName String
+  photoUrl            String?
+  budgetAllocated     Float       @default(0)
+  budgetUsed          Float       @default(0)
+  parentId            String?
+  parent              Secretary?  @relation("SubSecretaries", fields: [parentId], references: [id])
+  subSecretaries      Secretary[] @relation("SubSecretaries")
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  orders              Order[]     @relation("SecretaryOrders")
+  subOrders           Order[]     @relation("SubSecretaryOrders")
+
+  @@index([parentId])
+}
+
+// ============================================
+// Models — Ordens de Serviço
+// ============================================
+
+model Order {
+  id                   String        @id @default(uuid())
+  code                 String        @unique
+  name                 String
+  category             OrderCategory
+  status               OrderStatus   @default(DRAFT)
+  secretaryId          String
+  secretary            Secretary     @relation("SecretaryOrders", fields: [secretaryId], references: [id])
+  subSecretaryId       String?
+  subSecretary         Secretary?    @relation("SubSecretaryOrders", fields: [subSecretaryId], references: [id])
+  investmentArea       String
+  quotationStartDate   DateTime?
+  quotationEndDate     DateTime?
+  desiredDeliveryDate  DateTime?
+  regionRadius         Int?
+  specificMunicipality String?
+  receiverName         String
+  observations         String?
+  createdByUserId      String
+  createdBy            User          @relation("CreatedOrders", fields: [createdByUserId], references: [id])
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  items                OrderItem[]
+  timeline             OrderTimeline[]
+  deliveryRecords      DeliveryRecord[]
+  nonConformities      NonConformity[]
+  invoices             OrderInvoice[]
+  chatMessages         ChatMessage[]
+  deliveryLocations    DeliveryLocation[]
+
+  @@index([secretaryId])
+  @@index([status])
+  @@index([createdByUserId])
+  @@index([code])
+}
+
+model OrderItem {
+  id             String  @id @default(uuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name           String
+  imageUrl       String?
+  unit           String
+  quantity       Float
+  referenceValue Float
+
+  @@index([orderId])
+}
+
+model OrderTimeline {
+  id         String       @id @default(uuid())
+  orderId    String
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  step       TimelineStep
+  userId     String
+  user       User         @relation("TimelineUser", fields: [userId], references: [id])
+  occurredAt DateTime     @default(now())
+
+  @@index([orderId])
+}
+
+model DeliveryRecord {
+  id                String   @id @default(uuid())
+  orderId           String
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  images            String[]
+  deliveredByUserId String?
+  receivedByUserId  String
+  receivedBy        User     @relation("ReceivedDeliveries", fields: [receivedByUserId], references: [id])
+  deliveredAt       DateTime?
+  receivedAt        DateTime @default(now())
+  observations      String?
+
+  @@index([orderId])
+}
+
+model NonConformity {
+  id                 String   @id @default(uuid())
+  orderId            String
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  images             String[]
+  registeredByUserId String
+  registeredBy       User     @relation("RegisteredNonConformities", fields: [registeredByUserId], references: [id])
+  registeredAt       DateTime @default(now())
+  observations       String
+
+  @@index([orderId])
+}
+
+model OrderInvoice {
+  id                String   @id @default(uuid())
+  orderId           String
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fileUrl           String
+  establishmentName String
+  issuedAt          DateTime
+
+  @@index([orderId])
+}
+
+model ChatMessage {
+  id         String         @id @default(uuid())
+  orderId    String
+  order      Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  senderId   String
+  sender     User           @relation("SentMessages", fields: [senderId], references: [id])
+  content    String?
+  imageUrl   String?
+  senderType ChatSenderType
+  sentAt     DateTime       @default(now())
+
+  @@index([orderId])
+  @@index([sentAt])
+}
+
+model DeliveryLocation {
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name    String
+  zipCode String
+  address String
+  city    String
+  state   String
+
+  @@index([orderId])
 }

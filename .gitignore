@@ -16,6 +16,9 @@ dist/
 build/
 *.log
 logs/
+# Exception: src pages with 'logs' in path (audit logs, etc.)
+!src/**/logs/
+!src/**/logs/**
 
 # IDE & OS (AIOX)
 .DS_Store
