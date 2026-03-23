@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Enums
+// ============================================
+
+enum UserRole {
+  MAIN_MANAGER
+  SECRETARY_MANAGER
+  SECRETARY_USER
+  AUDIT_VIEWER
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILED
+  SUSPICIOUS
+}
+
+enum FraudAlertLevel {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum BiometricStatus {
+  SUCCESS
+  FAILED
+  SUSPICIOUS
+}
+
+enum TwoFactorAction {
+  APPROVE_ORDER
+  SUBMIT_COMMITMENT
+  SUBMIT_ADDITIVE
+}
+
+// ============================================
+// Models — Configuration
+// ============================================
+
+model BrandConfig {
+  id               String   @id @default(uuid())
+  logoUrl          String
+  primaryColor     String   @default("#1E40AF")
+  secondaryColor   String   @default("#1E3A8A")
+  faviconUrl       String
+  municipalityName String   @default("Prefeitura Municipal de Araçuaí")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ============================================
+// Models — Auth & Users
+// ============================================
+
+model User {
+  id                String    @id @default(uuid())
+  fullName          String
+  birthDate         DateTime
+  phone             String
+  email             String    @unique
+  cpf               String    @unique
+  rg                String
+  role              UserRole
+  secretaryId       String?
+  photoUrl          String?
+  lastLogin         DateTime?
+  biometricVerified Boolean   @default(false)
+  documentVerified  Boolean   @default(false)
+  passwordHash      String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  sessions          Session[]
+  twoFactorRequests TwoFactorRequest[]
+  auditLogs         AuditLog[]
+  biometricRecords  BiometricRecord[]
+
+  @@index([email])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  refreshToken String   @unique
+  expiresAt    DateTime
+  ipAddress    String
+  userAgent    String
+  createdAt    DateTime @default(now())
+}
+
+model TwoFactorRequest {
+  id           String          @id @default(uuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id])
+  action       TwoFactorAction
+  otpHash      String
+  expiresAt    DateTime
+  used         Boolean         @default(false)
+  failCount    Int             @default(0)
+  blockedUntil DateTime?
+  createdAt    DateTime        @default(now())
+}
+
+// ============================================
+// Models — Audit (Immutable)
+// ============================================
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  action     String
+  urlPath    String
+  userId     String?
+  user       User?       @relation(fields: [userId], references: [id])
+  userAgent  String
+  ipAddress  String
+  status     AuditStatus
+  metadata   Json?
+  occurredAt DateTime    @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([occurredAt])
+}
+
+model BiometricRecord {
+  id               String          @id @default(uuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id])
+  capturedImageUrl String
+  similarityScore  Float
+  livenessScore    Float
+  confidenceLevel  Float
+  fraudAlertLevel  FraudAlertLevel
+  aiEstimatedAge   Int?
+  ipAddress        String
+  status           BiometricStatus
+  createdAt        DateTime        @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
