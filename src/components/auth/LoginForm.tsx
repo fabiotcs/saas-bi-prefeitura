@@ -8,6 +8,7 @@ import { BiometricCapture } from './BiometricCapture'
 import { api } from '@/lib/api'
 
 type LoginStep = 'credentials' | 'biometric'
+type FraudAlertLevel = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH'
 
 export function LoginForm() {
   const router = useRouter()
@@ -17,6 +18,7 @@ export function LoginForm() {
   const [challengeToken, setChallengeToken] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [fraudAlertLevel, setFraudAlertLevel] = useState<FraudAlertLevel | undefined>()
 
   async function handleCredentials(e: React.FormEvent) {
     e.preventDefault()
@@ -55,8 +57,18 @@ export function LoginForm() {
       localStorage.setItem('access_token', data.accessToken)
       localStorage.setItem('refresh_token', data.refreshToken)
       router.push('/dashboard')
-    } catch {
-      setError('Verificação biométrica falhou. Tente novamente.')
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { status?: number; data?: { error?: string } } }
+      const status = axiosErr?.response?.status
+      const errMsg = axiosErr?.response?.data?.error
+
+      if (status === 403 && errMsg === 'fraud_detected') {
+        setFraudAlertLevel('HIGH')
+        setError('Acesso bloqueado — fraude detectada.')
+      } else {
+        setFraudAlertLevel('MEDIUM')
+        setError('Verificação biométrica falhou. Tente novamente.')
+      }
       setLoading(false)
     }
   }
@@ -97,7 +109,11 @@ export function LoginForm() {
           <p className="text-sm text-center text-gray-600">
             Credenciais confirmadas. Agora verifique seu rosto para acessar o sistema.
           </p>
-          <BiometricCapture onCapture={handleBiometricCapture} loading={loading} />
+          <BiometricCapture
+            onCapture={handleBiometricCapture}
+            loading={loading}
+            fraudAlertLevel={fraudAlertLevel}
+          />
           {error && <p className="text-sm text-red-600 text-center">{error}</p>}
           <Button
             variant="ghost"

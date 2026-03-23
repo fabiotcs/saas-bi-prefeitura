@@ -65,6 +65,25 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Bloqueia acesso se fraude detectada (HIGH) — AC Story 1.5
+    if (biometricResult.fraudAlertLevel === 'HIGH') {
+      await prisma.auditLog.create({
+        data: {
+          action: 'AUTH_BIOMETRIC_FRAUD_DETECTED',
+          urlPath: '/api/auth/biometric-verify',
+          userId,
+          userAgent,
+          ipAddress,
+          status: 'SUSPICIOUS',
+          metadata: {
+            livenessScore: biometricResult.livenessScore,
+            fraudAlertLevel: biometricResult.fraudAlertLevel,
+          },
+        },
+      })
+      return NextResponse.json({ error: 'fraud_detected' }, { status: 403 })
+    }
+
     if (!biometricResult.match) {
       await prisma.auditLog.create({
         data: {
@@ -74,7 +93,10 @@ export async function POST(request: NextRequest) {
           userAgent,
           ipAddress,
           status: 'FAILED',
-          metadata: { similarityScore: biometricResult.similarityScore },
+          metadata: {
+            similarityScore: biometricResult.similarityScore,
+            fraudAlertLevel: biometricResult.fraudAlertLevel,
+          },
         },
       })
       return NextResponse.json({ error: 'Verificação biométrica falhou' }, { status: 401 })
