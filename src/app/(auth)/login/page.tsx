@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { LoginForm } from '@/components/auth/LoginForm'
 
 async function getBrandConfig() {
   try {
@@ -10,7 +11,6 @@ async function getBrandConfig() {
 
 export default async function LoginPage() {
   const brand = await getBrandConfig()
-
   const municipalityName = brand?.municipalityName ?? 'Prefeitura Municipal de Araçuaí'
 
   return (
@@ -20,7 +20,7 @@ export default async function LoginPage() {
     >
       <div className="w-full max-w-md mx-auto px-4">
         <div className="bg-white rounded-2xl p-8 shadow-2xl">
-          {/* Logo area */}
+          {/* Logo */}
           <div className="flex flex-col items-center mb-8">
             {brand?.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -37,18 +37,11 @@ export default async function LoginPage() {
                 P
               </div>
             )}
-            <h1 className="text-2xl font-bold text-gray-900 text-center">
-              SaaS BI Araçuaí
-            </h1>
-            <p className="text-sm text-gray-500 text-center mt-1">
-              {municipalityName}
-            </p>
+            <h1 className="text-2xl font-bold text-gray-900 text-center">SaaS BI Araçuaí</h1>
+            <p className="text-sm text-gray-500 text-center mt-1">{municipalityName}</p>
           </div>
 
-          {/* Placeholder — full form implemented in Story 1.4 */}
-          <div className="text-center text-gray-400 text-sm py-4 border border-dashed border-gray-200 rounded-lg">
-            Formulário de autenticação — implementado na Story 1.4
-          </div>
+          <LoginForm />
         </div>
       </div>
     </div>
