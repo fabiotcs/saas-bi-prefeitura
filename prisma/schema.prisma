@@ -43,6 +43,31 @@ enum TwoFactorAction {
   SUBMIT_ADDITIVE
 }
 
+enum StockMovementType {
+  IN
+  OUT
+  TRANSFER
+}
+
+enum AbcClass {
+  A
+  B
+  C
+}
+
+enum InvoiceStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+}
+
+enum BudgetCommitmentStatus {
+  ACTIVE
+  CONSUMED
+  CANCELLED
+}
+
 enum OrderStatus {
   DRAFT
   OPEN
@@ -120,6 +145,9 @@ model User {
   receivedDeliveries       DeliveryRecord[]   @relation("ReceivedDeliveries")
   registeredNonConformities NonConformity[]   @relation("RegisteredNonConformities")
   sentMessages             ChatMessage[]      @relation("SentMessages")
+  stockMovements           StockMovement[]    @relation("StockMovements")
+  approvedAdditives        BudgetAdditive[]   @relation("ApprovedAdditives")
+  registeredCommitments    BudgetCommitment[] @relation("RegisteredCommitments")
 
   @@index([email])
 }
@@ -208,8 +236,11 @@ model Secretary {
   createdAt           DateTime    @default(now())
   updatedAt           DateTime    @updatedAt
 
-  orders              Order[]     @relation("SecretaryOrders")
-  subOrders           Order[]     @relation("SubSecretaryOrders")
+  orders              Order[]           @relation("SecretaryOrders")
+  subOrders           Order[]           @relation("SubSecretaryOrders")
+  invoices            Invoice[]         @relation("SecretaryInvoices")
+  commitments         BudgetCommitment[] @relation("SecretaryCommitments")
+  storageLocations    StorageLocation[]
 
   @@index([parentId])
 }
@@ -345,4 +376,164 @@ model DeliveryLocation {
   state   String
 
   @@index([orderId])
+}
+
+// ============================================
+// Models — Estoque (Storage & Inventory)
+// ============================================
+
+model StorageLocation {
+  id          String      @id @default(uuid())
+  name        String
+  secretaryId String?
+  secretary   Secretary?  @relation(fields: [secretaryId], references: [id])
+  observations String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  stockItems  StockItem[]
+
+  @@index([secretaryId])
+}
+
+model StockItem {
+  id                String          @id @default(uuid())
+  name              String
+  imageUrl          String?
+  quantity          Float           @default(0)
+  unit              String
+  unitPrice         Float           @default(0)
+  minimumAlert      Float           @default(0)
+  barcode           String?
+  qrCode            String?
+  storageLocationId String?
+  storageLocation   StorageLocation? @relation(fields: [storageLocationId], references: [id])
+  abcClass          AbcClass?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  movements         StockMovement[]
+
+  @@index([storageLocationId])
+  @@index([abcClass])
+}
+
+model StockMovement {
+  id               String            @id @default(uuid())
+  type             StockMovementType
+  itemId           String
+  item             StockItem         @relation(fields: [itemId], references: [id])
+  quantity         Float
+  value            Float
+  userId           String
+  user             User              @relation("StockMovements", fields: [userId], references: [id])
+  targetLocationId String?
+  notes            String?
+  occurredAt       DateTime          @default(now())
+
+  @@index([itemId])
+  @@index([userId])
+  @@index([occurredAt])
+}
+
+// ============================================
+// Models — Financeiro (Invoices)
+// ============================================
+
+model Invoice {
+  id              String        @id @default(uuid())
+  secretaryId     String
+  secretary       Secretary     @relation("SecretaryInvoices", fields: [secretaryId], references: [id])
+  subSecretaryId  String?
+  periodStart     DateTime
+  periodEnd       DateTime
+  totalBilled     Float         @default(0)
+  totalNet        Float         @default(0)
+  totalPaid       Float         @default(0)
+  status          InvoiceStatus @default(PENDING)
+  paymentProofUrl String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  items           InvoiceItem[]
+  payments        PaymentHistory[]
+
+  @@index([secretaryId])
+  @@index([status])
+}
+
+model InvoiceItem {
+  id        String  @id @default(uuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  orderId   String?
+  itemName  String
+  quantity  Float
+  unitPrice Float
+  total     Float
+
+  @@index([invoiceId])
+}
+
+model PaymentHistory {
+  id        String   @id @default(uuid())
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount    Float
+  paidAt    DateTime
+  proofUrl  String?
+
+  @@index([invoiceId])
+}
+
+// ============================================
+// Models — Orçamento (Budget)
+// ============================================
+
+model BudgetContract {
+  id                       String   @id @default(uuid())
+  contractNumber           String   @unique
+  initialValue             Float
+  additivesTotal           Float    @default(0)
+  currentTotal             Float
+  distributedToSecretaries Float    @default(0)
+  allocatedViaCommitment   Float    @default(0)
+  consumedInOrders         Float    @default(0)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  additives    BudgetAdditive[]
+  commitments  BudgetCommitment[]
+}
+
+model BudgetAdditive {
+  id           String         @id @default(uuid())
+  contractId   String
+  contract     BudgetContract @relation(fields: [contractId], references: [id])
+  value        Float
+  description  String
+  approvedAt   DateTime       @default(now())
+  fileUrl      String?
+  approvedById String
+  approvedBy   User           @relation("ApprovedAdditives", fields: [approvedById], references: [id])
+
+  @@index([contractId])
+}
+
+model BudgetCommitment {
+  id           String                 @id @default(uuid())
+  contractId   String
+  contract     BudgetContract         @relation(fields: [contractId], references: [id])
+  secretaryId  String
+  secretary    Secretary              @relation("SecretaryCommitments", fields: [secretaryId], references: [id])
+  value        Float
+  usedValue    Float                  @default(0)
+  status       BudgetCommitmentStatus @default(ACTIVE)
+  registeredAt DateTime               @default(now())
+  fileUrl      String?
+  registeredById String
+  registeredBy   User                 @relation("RegisteredCommitments", fields: [registeredById], references: [id])
+
+  @@index([contractId])
+  @@index([secretaryId])
 }
