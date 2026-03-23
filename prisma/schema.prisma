@@ -1,0 +1,645 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Enums
+// ============================================
+
+enum UserRole {
+  MAIN_MANAGER
+  SECRETARY_MANAGER
+  SECRETARY_USER
+  AUDIT_VIEWER
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILED
+  SUSPICIOUS
+}
+
+enum FraudAlertLevel {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum BiometricStatus {
+  SUCCESS
+  FAILED
+  SUSPICIOUS
+}
+
+enum TwoFactorAction {
+  APPROVE_ORDER
+  SUBMIT_COMMITMENT
+  SUBMIT_ADDITIVE
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  TRANSFER
+}
+
+enum AbcClass {
+  A
+  B
+  C
+}
+
+enum InvoiceStatus {
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+}
+
+enum BudgetCommitmentStatus {
+  ACTIVE
+  CONSUMED
+  CANCELLED
+}
+
+enum EstablishmentStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum BillingMode {
+  CENTRALIZED
+  DECENTRALIZED
+}
+
+enum OrderStatus {
+  DRAFT
+  OPEN
+  IN_QUOTATION
+  APPROVED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderCategory {
+  MATERIAL
+  SERVICE
+  EQUIPMENT
+}
+
+enum ChatSenderType {
+  PREFECTURE
+  ESTABLISHMENT
+}
+
+enum TimelineStep {
+  CREATED
+  QUOTATION_OPENED
+  QUOTATION_CLOSED
+  APPROVED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+// ============================================
+// Models — Configuration
+// ============================================
+
+model BrandConfig {
+  id               String   @id @default(uuid())
+  logoUrl          String
+  primaryColor     String   @default("#1E40AF")
+  secondaryColor   String   @default("#1E3A8A")
+  faviconUrl       String
+  municipalityName String   @default("Prefeitura Municipal de Araçuaí")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+// ============================================
+// Models — Auth & Users
+// ============================================
+
+model User {
+  id                String    @id @default(uuid())
+  fullName          String
+  birthDate         DateTime
+  phone             String
+  email             String    @unique
+  cpf               String    @unique
+  rg                String
+  role              UserRole
+  secretaryId       String?
+  photoUrl          String?
+  lastLogin         DateTime?
+  biometricVerified Boolean   @default(false)
+  documentVerified  Boolean   @default(false)
+  passwordHash      String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  sessions                 Session[]
+  twoFactorRequests        TwoFactorRequest[]
+  auditLogs                AuditLog[]
+  biometricRecords         BiometricRecord[]
+  createdOrders            Order[]            @relation("CreatedOrders")
+  timelineEntries          OrderTimeline[]    @relation("TimelineUser")
+  receivedDeliveries       DeliveryRecord[]   @relation("ReceivedDeliveries")
+  registeredNonConformities NonConformity[]   @relation("RegisteredNonConformities")
+  sentMessages             ChatMessage[]      @relation("SentMessages")
+  stockMovements           StockMovement[]    @relation("StockMovements")
+  approvedAdditives        BudgetAdditive[]   @relation("ApprovedAdditives")
+  registeredCommitments    BudgetCommitment[] @relation("RegisteredCommitments")
+  establishmentFavorites   EstablishmentFavorite[]
+  createdApiKeys           ApiKey[]           @relation("CreatedApiKeys")
+
+  @@index([email])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  refreshToken String   @unique
+  expiresAt    DateTime
+  ipAddress    String
+  userAgent    String
+  createdAt    DateTime @default(now())
+}
+
+model TwoFactorRequest {
+  id           String          @id @default(uuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id])
+  action       TwoFactorAction
+  otpHash      String
+  expiresAt    DateTime
+  used         Boolean         @default(false)
+  failCount    Int             @default(0)
+  blockedUntil DateTime?
+  createdAt    DateTime        @default(now())
+}
+
+// ============================================
+// Models — Audit (Immutable)
+// ============================================
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  action     String
+  urlPath    String
+  userId     String?
+  user       User?       @relation(fields: [userId], references: [id])
+  userAgent  String
+  ipAddress  String
+  status     AuditStatus
+  metadata   Json?
+  occurredAt DateTime    @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([occurredAt])
+}
+
+model BiometricRecord {
+  id               String          @id @default(uuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id])
+  capturedImageUrl String
+  similarityScore  Float
+  livenessScore    Float
+  confidenceLevel  Float
+  fraudAlertLevel  FraudAlertLevel
+  aiEstimatedAge   Int?
+  ipAddress        String
+  status           BiometricStatus
+  createdAt        DateTime        @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================
+// Models — Secretarias
+// ============================================
+
+model Secretary {
+  id                  String      @id @default(uuid())
+  name                String      @unique
+  phone               String
+  cnpj                String      @unique
+  description         String?
+  secretaryPersonName String
+  photoUrl            String?
+  budgetAllocated     Float       @default(0)
+  budgetUsed          Float       @default(0)
+  parentId            String?
+  parent              Secretary?  @relation("SubSecretaries", fields: [parentId], references: [id])
+  subSecretaries      Secretary[] @relation("SubSecretaries")
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  orders              Order[]           @relation("SecretaryOrders")
+  subOrders           Order[]           @relation("SubSecretaryOrders")
+  invoices            Invoice[]         @relation("SecretaryInvoices")
+  commitments         BudgetCommitment[] @relation("SecretaryCommitments")
+  storageLocations    StorageLocation[]
+
+  @@index([parentId])
+}
+
+// ============================================
+// Models — Ordens de Serviço
+// ============================================
+
+model Order {
+  id                   String        @id @default(uuid())
+  code                 String        @unique
+  name                 String
+  category             OrderCategory
+  status               OrderStatus   @default(DRAFT)
+  secretaryId          String
+  secretary            Secretary     @relation("SecretaryOrders", fields: [secretaryId], references: [id])
+  subSecretaryId       String?
+  subSecretary         Secretary?    @relation("SubSecretaryOrders", fields: [subSecretaryId], references: [id])
+  investmentArea       String
+  quotationStartDate   DateTime?
+  quotationEndDate     DateTime?
+  desiredDeliveryDate  DateTime?
+  regionRadius         Int?
+  specificMunicipality String?
+  receiverName         String
+  observations         String?
+  createdByUserId      String
+  createdBy            User          @relation("CreatedOrders", fields: [createdByUserId], references: [id])
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  items                OrderItem[]
+  timeline             OrderTimeline[]
+  deliveryRecords      DeliveryRecord[]
+  nonConformities      NonConformity[]
+  invoices             OrderInvoice[]
+  chatMessages         ChatMessage[]
+  deliveryLocations    DeliveryLocation[]
+
+  @@index([secretaryId])
+  @@index([status])
+  @@index([createdByUserId])
+  @@index([code])
+}
+
+model OrderItem {
+  id             String  @id @default(uuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name           String
+  imageUrl       String?
+  unit           String
+  quantity       Float
+  referenceValue Float
+
+  @@index([orderId])
+}
+
+model OrderTimeline {
+  id         String       @id @default(uuid())
+  orderId    String
+  order      Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  step       TimelineStep
+  userId     String
+  user       User         @relation("TimelineUser", fields: [userId], references: [id])
+  occurredAt DateTime     @default(now())
+
+  @@index([orderId])
+}
+
+model DeliveryRecord {
+  id                String   @id @default(uuid())
+  orderId           String
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  images            String[]
+  deliveredByUserId String?
+  receivedByUserId  String
+  receivedBy        User     @relation("ReceivedDeliveries", fields: [receivedByUserId], references: [id])
+  deliveredAt       DateTime?
+  receivedAt        DateTime @default(now())
+  observations      String?
+
+  @@index([orderId])
+}
+
+model NonConformity {
+  id                 String   @id @default(uuid())
+  orderId            String
+  order              Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  images             String[]
+  registeredByUserId String
+  registeredBy       User     @relation("RegisteredNonConformities", fields: [registeredByUserId], references: [id])
+  registeredAt       DateTime @default(now())
+  observations       String
+
+  @@index([orderId])
+}
+
+model OrderInvoice {
+  id                String   @id @default(uuid())
+  orderId           String
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fileUrl           String
+  establishmentName String
+  issuedAt          DateTime
+
+  @@index([orderId])
+}
+
+model ChatMessage {
+  id         String         @id @default(uuid())
+  orderId    String
+  order      Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  senderId   String
+  sender     User           @relation("SentMessages", fields: [senderId], references: [id])
+  content    String?
+  imageUrl   String?
+  senderType ChatSenderType
+  sentAt     DateTime       @default(now())
+
+  @@index([orderId])
+  @@index([sentAt])
+}
+
+model DeliveryLocation {
+  id      String @id @default(uuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  name    String
+  zipCode String
+  address String
+  city    String
+  state   String
+
+  @@index([orderId])
+}
+
+// ============================================
+// Models — Estoque (Storage & Inventory)
+// ============================================
+
+model StorageLocation {
+  id          String      @id @default(uuid())
+  name        String
+  secretaryId String?
+  secretary   Secretary?  @relation(fields: [secretaryId], references: [id])
+  observations String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  stockItems  StockItem[]
+
+  @@index([secretaryId])
+}
+
+model StockItem {
+  id                String          @id @default(uuid())
+  name              String
+  imageUrl          String?
+  quantity          Float           @default(0)
+  unit              String
+  unitPrice         Float           @default(0)
+  minimumAlert      Float           @default(0)
+  barcode           String?
+  qrCode            String?
+  storageLocationId String?
+  storageLocation   StorageLocation? @relation(fields: [storageLocationId], references: [id])
+  abcClass          AbcClass?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  movements         StockMovement[]
+
+  @@index([storageLocationId])
+  @@index([abcClass])
+}
+
+model StockMovement {
+  id               String            @id @default(uuid())
+  type             StockMovementType
+  itemId           String
+  item             StockItem         @relation(fields: [itemId], references: [id])
+  quantity         Float
+  value            Float
+  userId           String
+  user             User              @relation("StockMovements", fields: [userId], references: [id])
+  targetLocationId String?
+  notes            String?
+  occurredAt       DateTime          @default(now())
+
+  @@index([itemId])
+  @@index([userId])
+  @@index([occurredAt])
+}
+
+// ============================================
+// Models — Financeiro (Invoices)
+// ============================================
+
+model Invoice {
+  id              String        @id @default(uuid())
+  secretaryId     String
+  secretary       Secretary     @relation("SecretaryInvoices", fields: [secretaryId], references: [id])
+  subSecretaryId  String?
+  periodStart     DateTime
+  periodEnd       DateTime
+  totalBilled     Float         @default(0)
+  totalNet        Float         @default(0)
+  totalPaid       Float         @default(0)
+  status          InvoiceStatus @default(PENDING)
+  paymentProofUrl String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  items           InvoiceItem[]
+  payments        PaymentHistory[]
+
+  @@index([secretaryId])
+  @@index([status])
+}
+
+model InvoiceItem {
+  id        String  @id @default(uuid())
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  orderId   String?
+  itemName  String
+  quantity  Float
+  unitPrice Float
+  total     Float
+
+  @@index([invoiceId])
+}
+
+model PaymentHistory {
+  id        String   @id @default(uuid())
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  amount    Float
+  paidAt    DateTime
+  proofUrl  String?
+
+  @@index([invoiceId])
+}
+
+// ============================================
+// Models — Orçamento (Budget)
+// ============================================
+
+model BudgetContract {
+  id                       String   @id @default(uuid())
+  contractNumber           String   @unique
+  initialValue             Float
+  additivesTotal           Float    @default(0)
+  currentTotal             Float
+  distributedToSecretaries Float    @default(0)
+  allocatedViaCommitment   Float    @default(0)
+  consumedInOrders         Float    @default(0)
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  additives    BudgetAdditive[]
+  commitments  BudgetCommitment[]
+}
+
+model BudgetAdditive {
+  id           String         @id @default(uuid())
+  contractId   String
+  contract     BudgetContract @relation(fields: [contractId], references: [id])
+  value        Float
+  description  String
+  approvedAt   DateTime       @default(now())
+  fileUrl      String?
+  approvedById String
+  approvedBy   User           @relation("ApprovedAdditives", fields: [approvedById], references: [id])
+
+  @@index([contractId])
+}
+
+model BudgetCommitment {
+  id           String                 @id @default(uuid())
+  contractId   String
+  contract     BudgetContract         @relation(fields: [contractId], references: [id])
+  secretaryId  String
+  secretary    Secretary              @relation("SecretaryCommitments", fields: [secretaryId], references: [id])
+  value        Float
+  usedValue    Float                  @default(0)
+  status       BudgetCommitmentStatus @default(ACTIVE)
+  registeredAt DateTime               @default(now())
+  fileUrl      String?
+  registeredById String
+  registeredBy   User                 @relation("RegisteredCommitments", fields: [registeredById], references: [id])
+
+  @@index([contractId])
+  @@index([secretaryId])
+}
+
+// ============================================
+// Models — Estabelecimentos (Rede Credenciada)
+// ============================================
+
+model Establishment {
+  id                  String              @id @default(cuid())
+  name                String
+  cnpj                String              @unique
+  address             String
+  city                String
+  state               String
+  lat                 Float?
+  lng                 Float?
+  phone               String
+  email               String?
+  servicesDescription String
+  ordersCompleted     Int                 @default(0)
+  rating              Float               @default(0)
+  status              EstablishmentStatus @default(ACTIVE)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  favorites           EstablishmentFavorite[]
+
+  @@index([status])
+  @@index([cnpj])
+}
+
+model EstablishmentFavorite {
+  id              String        @id @default(cuid())
+  userId          String
+  establishmentId String
+  createdAt       DateTime      @default(now())
+
+  user            User          @relation(fields: [userId], references: [id])
+  establishment   Establishment @relation(fields: [establishmentId], references: [id])
+
+  @@unique([userId, establishmentId])
+  @@index([userId])
+  @@index([establishmentId])
+}
+
+// ============================================
+// Models — Configurações do Sistema
+// ============================================
+
+model SystemSettings {
+  id                                  String      @id @default("system")
+  billingMode                         BillingMode @default(CENTRALIZED)
+  billingClosingDay                   Int         @default(25)
+  requireManagerApproval              Boolean     @default(true)
+  requireBudgetValidation             Boolean     @default(true)
+  minimumProposalsForApproval         Int         @default(3)
+  restrictOrderCreationToVerifiedUsers Boolean    @default(false)
+  updatedAt                           DateTime    @updatedAt
+}
+
+// ============================================
+// Models — API Keys & Integrações
+// ============================================
+
+model ApiKey {
+  id          String       @id @default(cuid())
+  name        String
+  keyHash     String       @unique
+  permissions String[]
+  lastUsedAt  DateTime?
+  revoked     Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  createdById String
+  createdBy   User         @relation("CreatedApiKeys", fields: [createdById], references: [id])
+
+  callLogs    ApiCallLog[]
+
+  @@index([createdById])
+  @@index([revoked])
+}
+
+model ApiCallLog {
+  id             String   @id @default(cuid())
+  endpoint       String
+  method         String
+  statusCode     Int
+  responseTimeMs Int
+  occurredAt     DateTime @default(now())
+  ipAddress      String
+  apiKeyId       String
+  apiKey         ApiKey   @relation(fields: [apiKeyId], references: [id])
+
+  @@index([apiKeyId])
+  @@index([occurredAt])
+}

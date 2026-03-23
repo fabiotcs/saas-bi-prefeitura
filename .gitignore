@@ -16,6 +16,9 @@ dist/
 build/
 *.log
 logs/
+# Exception: src pages with 'logs' in path (audit logs, etc.)
+!src/**/logs/
+!src/**/logs/**
 
 # IDE & OS (AIOX)
 .DS_Store
@@ -27,3 +30,7 @@ Thumbs.db
 .aiox-core/local/
 .claude/settings.local.json
 .aiox/install-log.txt
+
+# Next.js
+.next/
+.turbo/

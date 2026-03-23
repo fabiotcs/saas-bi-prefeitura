@@ -1,0 +1,27 @@
+generated_at: 2026-03-22
+project: saas-bi-prefeitura
+os: Linux Ubuntu 24.04.3 LTS (x86_64)
+git_user: fabiotcs
+git_email: fabiotcs@users.noreply.github.com
+
+tools:
+  git:       { status: ok, version: "2.43.0" }
+  gh:        { status: ok, version: "2.88.1" }
+  node:      { status: ok, version: "v18.19.1" }
+  npm:       { status: ok, version: "9.2.0" }
+  supabase:  { status: ok, version: "2.78.1" }
+  docker:    { status: ok, version: "29.3.0" }
+  pnpm:      { status: ok, version: "10.32.1" }
+  coderabbit: { status: missing, note: "install URL unavailable (404)" }
+
+github:
+  authenticated: true
+  user: fabiotcs
+  repo: https://github.com/fabiotcs/saas-bi-prefeitura
+  branch: main
+  visibility: public
+
+git:
+  initialized: true
+  initial_commit: true
+  remote: origin
