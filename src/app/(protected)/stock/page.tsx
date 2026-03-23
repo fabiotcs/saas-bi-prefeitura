@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useRequireRole } from '@/hooks/useRequireRole'
 import { getStockDashboard, listInventory } from '@/services/inventory.service'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { api } from '@/lib/api'
 
 const STOCK_VIEW_KEY = 'stockView'
 
@@ -93,14 +94,38 @@ export default function StockPage() {
   const total = inventoryData?.total ?? 0
   const totalPages = Math.ceil(total / 20)
 
+  const [emailStatus, setEmailStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const emailMutation = useMutation({
+    mutationFn: () => api.post('/stock/email-report'),
+    onSuccess: () => {
+      setEmailStatus('success')
+      setTimeout(() => setEmailStatus('idle'), 4000)
+    },
+    onError: () => {
+      setEmailStatus('error')
+      setTimeout(() => setEmailStatus('idle'), 4000)
+    },
+  })
+
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Estoque</h1>
-        <Button asChild>
-          <Link href="/stock/items/new">+ Novo Item</Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => emailMutation.mutate()}
+            disabled={emailMutation.isPending}
+          >
+            {emailMutation.isPending ? 'Enviando...' : emailStatus === 'success' ? '✓ E-mail enviado!' : emailStatus === 'error' ? '✗ Falha ao enviar' : '📧 Resumo por E-mail'}
+          </Button>
+          <Button asChild>
+            <Link href="/stock/items/new">+ Novo Item</Link>
+          </Button>
+        </div>
       </div>
 
       {/* Dashboard cards */}

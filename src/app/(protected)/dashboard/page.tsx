@@ -9,10 +9,16 @@ import { RecentOrdersTable } from '@/components/dashboard/RecentOrdersTable'
 import { QuickActionButtons } from '@/components/dashboard/QuickActionButtons'
 
 export default function DashboardPage() {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, dataUpdatedAt } = useQuery({
     queryKey: ['dashboard'],
     queryFn: fetchDashboard,
+    refetchInterval: 30_000,
+    staleTime: 25_000,
   })
+
+  const lastUpdated = dataUpdatedAt
+    ? new Date(dataUpdatedAt).toLocaleTimeString('pt-BR')
+    : null
 
   if (isLoading) {
     return (
@@ -40,7 +46,14 @@ export default function DashboardPage() {
             Visão geral dos indicadores do município
           </p>
         </div>
-        <QuickActionButtons />
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          {lastUpdated && (
+            <span className="text-xs text-muted-foreground">
+              Atualizado às {lastUpdated}
+            </span>
+          )}
+          <QuickActionButtons />
+        </div>
       </div>
 
       {/* Budget Card */}
