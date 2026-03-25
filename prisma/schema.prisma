@@ -161,8 +161,10 @@ model User {
   registeredCommitments    BudgetCommitment[] @relation("RegisteredCommitments")
   establishmentFavorites   EstablishmentFavorite[]
   createdApiKeys           ApiKey[]           @relation("CreatedApiKeys")
+  secretary                Secretary?         @relation("SecretaryUsers", fields: [secretaryId], references: [id])
 
   @@index([email])
+  @@index([secretaryId])
 }
 
 model Session {
@@ -254,6 +256,7 @@ model Secretary {
   invoices            Invoice[]         @relation("SecretaryInvoices")
   commitments         BudgetCommitment[] @relation("SecretaryCommitments")
   storageLocations    StorageLocation[]
+  users               User[]            @relation("SecretaryUsers")
 
   @@index([parentId])
 }

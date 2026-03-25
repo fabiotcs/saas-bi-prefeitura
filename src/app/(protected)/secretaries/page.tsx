@@ -10,15 +10,28 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useRequireRole } from '@/hooks/useRequireRole'
 
+const ROLE_LABELS: Record<string, string> = {
+  MAIN_MANAGER: 'Gestor Principal',
+  SECRETARY_MANAGER: 'Gestor',
+  SECRETARY_USER: 'Usuário',
+  AUDIT_VIEWER: 'Auditor',
+}
+
 export default function SecretariesPage() {
   useRequireRole(['MAIN_MANAGER', 'SECRETARY_MANAGER'], '/dashboard')
 
   const [search, setSearch] = useState('')
+  const [activeSearch, setActiveSearch] = useState('')
   const [page, setPage] = useState(1)
 
+  function handleFilter() {
+    setActiveSearch(search)
+    setPage(1)
+  }
+
   const { data, isLoading } = useQuery({
-    queryKey: ['secretaries', { search, page }],
-    queryFn: () => listSecretaries({ search, page, limit: 20 }),
+    queryKey: ['secretaries', { search: activeSearch, page }],
+    queryFn: () => listSecretaries({ search: activeSearch, page, limit: 20 }),
   })
 
   const secretaries = data?.data ?? []
@@ -34,12 +47,18 @@ export default function SecretariesPage() {
         </Button>
       </div>
 
-      <Input
-        placeholder="Buscar por nome ou responsável..."
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-        className="max-w-sm"
-      />
+      {/* Filtro com botão explícito */}
+      <div className="flex gap-2 max-w-sm">
+        <Input
+          placeholder="Buscar pelo nome..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') handleFilter() }}
+        />
+        <Button variant="outline" onClick={handleFilter}>
+          Filtrar
+        </Button>
+      </div>
 
       {isLoading ? (
         <p className="text-muted-foreground text-sm">Carregando...</p>
@@ -47,48 +66,95 @@ export default function SecretariesPage() {
         <p className="text-muted-foreground text-sm">Nenhuma secretaria encontrada.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {secretaries.map((s) => (
-            <div key={s.id} className="rounded-xl border bg-card p-5 space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  {s.photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={s.photoUrl} alt={s.secretaryPersonName} className="w-10 h-10 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
-                      {s.name.charAt(0)}
-                    </div>
-                  )}
+          {secretaries.map((s) => {
+            const users = (s as unknown as { users?: { id: string; fullName: string; photoUrl?: string | null; role: string }[] }).users ?? []
+
+            return (
+              <div key={s.id} className="rounded-xl border bg-card p-5 space-y-4">
+                {/* Header: nome + badge Sub */}
+                <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="font-semibold text-sm">{s.name}</p>
-                    <p className="text-xs text-muted-foreground">{s.secretaryPersonName}</p>
+                    <p className="font-semibold text-sm leading-tight">{s.name}</p>
+                    {s.parentId && (
+                      <Badge variant="secondary" className="text-xs mt-1">Subsecretaria</Badge>
+                    )}
                   </div>
                 </div>
-                {s.parentId && (
-                  <Badge variant="secondary" className="text-xs">Sub</Badge>
-                )}
-              </div>
 
-              <div className="text-xs text-muted-foreground space-y-1">
-                <p>CNPJ: {s.cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')}</p>
-                {s._count && <p>Pedidos: {s._count.orders}</p>}
-                {s.subSecretaries && s.subSecretaries.length > 0 && (
-                  <p>Subsecretarias: {s.subSecretaries.length}</p>
-                )}
-              </div>
+                {/* Responsáveis */}
+                <div className="space-y-1.5">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Responsáveis ({users.length > 0 ? users.length : '—'})
+                  </p>
+                  {users.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {users.slice(0, 4).map((u) => (
+                        <div key={u.id} className="flex items-center gap-1.5">
+                          {u.photoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={u.photoUrl}
+                              alt={u.fullName}
+                              className="w-7 h-7 rounded-full object-cover border"
+                              title={u.fullName}
+                            />
+                          ) : (
+                            <div
+                              className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary border"
+                              title={u.fullName}
+                            >
+                              {u.fullName.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div className="leading-tight">
+                            <p className="text-xs font-medium truncate max-w-[100px]">{u.fullName}</p>
+                            <p className="text-[10px] text-muted-foreground">{ROLE_LABELS[u.role] ?? u.role}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {users.length > 4 && (
+                        <span className="text-xs text-muted-foreground self-center">+{users.length - 4}</span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
+                        {s.secretaryPersonName.charAt(0)}
+                      </div>
+                      <span className="text-xs text-muted-foreground">{s.secretaryPersonName}</span>
+                    </div>
+                  )}
+                </div>
 
-              <BudgetProgressBar allocated={s.budgetAllocated} used={s.budgetUsed} />
+                {/* Subsecretárias e pedidos */}
+                <div className="flex gap-4 text-xs text-muted-foreground">
+                  <span>
+                    <span className="font-semibold text-foreground">
+                      {s.subSecretaries?.length ?? 0}
+                    </span>{' '}subsecretária{(s.subSecretaries?.length ?? 0) !== 1 ? 's' : ''}
+                  </span>
+                  <span>
+                    <span className="font-semibold text-foreground">
+                      {s._count?.orders ?? 0}
+                    </span>{' '}pedido{(s._count?.orders ?? 0) !== 1 ? 's' : ''}
+                  </span>
+                </div>
 
-              <div className="flex gap-2 pt-1">
-                <Button variant="outline" size="sm" asChild className="flex-1">
-                  <Link href={`/secretaries/${s.id}/edit`}>Editar</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild className="flex-1">
-                  <Link href={`/secretaries/${s.id}/financial`}>Financeiro</Link>
-                </Button>
+                {/* Barra orçamentária */}
+                <BudgetProgressBar allocated={s.budgetAllocated} used={s.budgetUsed} />
+
+                {/* Ações */}
+                <div className="flex gap-2 pt-1">
+                  <Button variant="outline" size="sm" asChild className="flex-1">
+                    <Link href={`/secretaries/${s.id}/edit`}>Editar</Link>
+                  </Button>
+                  <Button variant="ghost" size="sm" asChild className="flex-1">
+                    <Link href={`/secretaries/${s.id}/financial`}>Financeiro</Link>
+                  </Button>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 

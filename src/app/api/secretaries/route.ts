@@ -40,6 +40,7 @@ export async function GET(request: NextRequest) {
       include: {
         parent: { select: { id: true, name: true } },
         subSecretaries: { select: { id: true, name: true } },
+        users: { select: { id: true, fullName: true, photoUrl: true, role: true } },
         _count: { select: { orders: true } },
       },
       orderBy: { name: 'asc' },
