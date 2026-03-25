@@ -191,6 +191,7 @@ export default function BiometricHistoryPage() {
                   <TableHead>Usuário</TableHead>
                   <TableHead>Similaridade</TableHead>
                   <TableHead>Vivacidade</TableHead>
+                  <TableHead>Confiança</TableHead>
                   <TableHead>IA — Idade / Gênero</TableHead>
                   <TableHead>Documento</TableHead>
                   <TableHead>Alerta Fraude</TableHead>
@@ -207,14 +208,7 @@ export default function BiometricHistoryPage() {
                     </TableCell>
                   </TableRow>
                 )}
-                {data?.data.map((record) => {
-                  const r = record as typeof record & {
-                    aiEstimatedAge?: number | null
-                    aiEstimatedGender?: string | null
-                    documentMatch?: boolean
-                    documentPhotoUrl?: string | null
-                  }
-                  return (
+                {data?.data.map((record) => (
                   <TableRow key={record.id} className={record.fraudAlertLevel === 'HIGH' ? 'bg-red-50' : record.fraudAlertLevel === 'MEDIUM' ? 'bg-yellow-50' : ''}>
                     <TableCell>
                       <img
@@ -254,14 +248,17 @@ export default function BiometricHistoryPage() {
                     <TableCell className="text-sm tabular-nums">
                       {formatPercent(record.livenessScore)}
                     </TableCell>
+                    <TableCell className="text-sm tabular-nums">
+                      {formatPercent(record.confidenceLevel)}
+                    </TableCell>
                     <TableCell className="text-sm">
-                      {r.aiEstimatedAge || r.aiEstimatedGender ? (
+                      {record.aiEstimatedAge || record.aiEstimatedGender ? (
                         <div className="space-y-0.5">
-                          {r.aiEstimatedAge && (
-                            <p className="text-gray-700">~{r.aiEstimatedAge} anos</p>
+                          {record.aiEstimatedAge && (
+                            <p className="text-gray-700">~{record.aiEstimatedAge} anos</p>
                           )}
-                          {r.aiEstimatedGender && (
-                            <p className="text-gray-500 text-xs">{r.aiEstimatedGender}</p>
+                          {record.aiEstimatedGender && (
+                            <p className="text-gray-500 text-xs">{record.aiEstimatedGender}</p>
                           )}
                         </div>
                       ) : (
@@ -269,9 +266,9 @@ export default function BiometricHistoryPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {r.documentPhotoUrl ? (
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border ${r.documentMatch ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}`}>
-                          {r.documentMatch ? 'Confirmado' : 'Divergente'}
+                      {record.documentPhotoUrl ? (
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border ${record.documentMatch ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}`}>
+                          {record.documentMatch ? 'Confirmado' : 'Divergente'}
                         </span>
                       ) : (
                         <span className="text-gray-400 text-xs">Não enviado</span>
@@ -290,8 +287,7 @@ export default function BiometricHistoryPage() {
                       {formatDateTime(record.createdAt)}
                     </TableCell>
                   </TableRow>
-                  )
-                })}
+                ))}
               </TableBody>
             </Table>
 

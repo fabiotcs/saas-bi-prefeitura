@@ -11,11 +11,14 @@ export interface BiometricRecordWithUser {
   id: string
   userId: string
   capturedImageUrl: string
+  documentPhotoUrl: string | null
   similarityScore: number
   livenessScore: number
   confidenceLevel: number
   fraudAlertLevel: FraudAlertLevel
   aiEstimatedAge: number | null
+  aiEstimatedGender: string | null
+  documentMatch: boolean
   ipAddress: string
   status: BiometricStatus
   createdAt: string
