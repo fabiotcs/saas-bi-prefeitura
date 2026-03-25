@@ -6,7 +6,7 @@ export type OrderCategory = 'MATERIAL' | 'SERVICE' | 'EQUIPMENT'
 export interface OrderItem {
   id?: string
   name: string
-  imageUrl?: string
+  imageUrl?: string | null
   unit: string
   quantity: number
   referenceValue: number
