@@ -58,15 +58,16 @@ export function LoginForm() {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
 
+      const role = data.user.role as 'MAIN_MANAGER' | 'SECRETARY_MANAGER' | 'SECRETARY_USER' | 'AUDIT_VIEWER'
       setAuth(data.accessToken, data.refreshToken, {
         id: data.user.id,
         fullName: data.user.fullName,
         email: data.user.email,
-        role: data.user.role as 'MAIN_MANAGER' | 'SECRETARY_MANAGER' | 'SECRETARY_USER' | 'AUDIT_VIEWER',
+        role,
         photoUrl: data.user.photoUrl,
         secretaryId: data.user.secretaryId,
       })
-      router.push('/dashboard')
+      router.push(role === 'AUDIT_VIEWER' ? '/audit/viewer' : '/dashboard')
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { error?: string } } }
       const status = axiosErr?.response?.status

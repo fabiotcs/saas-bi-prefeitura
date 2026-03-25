@@ -37,20 +37,21 @@ interface NavLink {
 }
 
 const navLinks: NavLink[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/secretaries', label: 'Secretarias', icon: Building2 },
-  { href: '/users', label: 'Usuários', icon: Users },
-  { href: '/orders', label: 'Pedidos', icon: ShoppingCart },
-  { href: '/audit', label: 'Auditoria', icon: ClipboardList },
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, allowedRoles: ['MAIN_MANAGER', 'SECRETARY_MANAGER', 'SECRETARY_USER'] },
+  { href: '/secretaries', label: 'Secretarias', icon: Building2, allowedRoles: ['MAIN_MANAGER', 'SECRETARY_MANAGER', 'SECRETARY_USER'] },
+  { href: '/users', label: 'Usuários', icon: Users, allowedRoles: ['MAIN_MANAGER', 'SECRETARY_MANAGER'] },
+  { href: '/orders', label: 'Pedidos', icon: ShoppingCart, allowedRoles: ['MAIN_MANAGER', 'SECRETARY_MANAGER', 'SECRETARY_USER'] },
+  { href: '/audit/viewer', label: 'Painel de Auditoria', icon: ClipboardList, allowedRoles: ['AUDIT_VIEWER'] },
+  { href: '/audit/logs', label: 'Logs de Auditoria', icon: ClipboardList, allowedRoles: ['MAIN_MANAGER', 'AUDIT_VIEWER'] },
   {
     href: '/audit/biometric',
     label: 'Histórico Biométrico',
     icon: ScanFace,
     allowedRoles: ['MAIN_MANAGER', 'AUDIT_VIEWER'],
   },
-  { href: '/budget', label: 'Orçamento', icon: DollarSign },
-  { href: '/stock', label: 'Estoque', icon: Package },
-  { href: '/reports', label: 'Relatórios', icon: BarChart3 },
+  { href: '/budget', label: 'Orçamento', icon: DollarSign, allowedRoles: ['MAIN_MANAGER', 'SECRETARY_MANAGER', 'SECRETARY_USER'] },
+  { href: '/stock', label: 'Estoque', icon: Package, allowedRoles: ['MAIN_MANAGER', 'SECRETARY_MANAGER', 'SECRETARY_USER'] },
+  { href: '/reports', label: 'Relatórios', icon: BarChart3, allowedRoles: ['MAIN_MANAGER', 'SECRETARY_MANAGER', 'SECRETARY_USER'] },
   {
     href: '/settings',
     label: 'Configurações',
