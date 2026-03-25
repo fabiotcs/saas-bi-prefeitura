@@ -143,6 +143,7 @@ model User {
   lastLogin         DateTime?
   biometricVerified Boolean   @default(false)
   documentVerified  Boolean   @default(false)
+  approvalLimit     Float     @default(0)
   passwordHash      String
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

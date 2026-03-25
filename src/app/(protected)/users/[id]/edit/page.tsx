@@ -17,7 +17,7 @@ const ROLE_OPTIONS: { value: UserRole; label: string; description: string }[] = 
 ]
 
 export default function EditUserPage() {
-  useRequireRole(['MAIN_MANAGER'], '/users')
+  useRequireRole(['MAIN_MANAGER', 'SECRETARY_MANAGER'], '/users')
 
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -29,6 +29,7 @@ export default function EditUserPage() {
     phone: '',
     role: '' as UserRole | '',
     secretaryId: '',
+    approvalLimit: '',
   })
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export default function EditUserPage() {
           phone: user.phone ?? '',
           role: user.role as UserRole,
           secretaryId: user.secretaryId ?? '',
+          approvalLimit: (user as unknown as { approvalLimit?: number }).approvalLimit?.toString() ?? '0',
         })
       })
       .catch(() => setError('Usuário não encontrado.'))
@@ -59,6 +61,7 @@ export default function EditUserPage() {
         phone: form.phone,
         role: form.role as UserRole,
         secretaryId: form.secretaryId || undefined,
+        approvalLimit: form.approvalLimit ? parseFloat(form.approvalLimit) : 0,
       })
       router.push('/users')
     } catch (err: unknown) {
@@ -104,6 +107,10 @@ export default function EditUserPage() {
               </SelectContent>
             </Select>
           </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Limite de Aprovação (R$)</label>
+          <Input type="number" min="0" step="0.01" value={form.approvalLimit} placeholder="0 = sem limite" onChange={(e) => set('approvalLimit', e.target.value)} />
         </div>
 
         {error && <p className="text-sm text-destructive">{error}</p>}

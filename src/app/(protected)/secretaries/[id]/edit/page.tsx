@@ -10,7 +10,7 @@ import { useRequireRole } from '@/hooks/useRequireRole'
 import { formatCNPJ, isValidCNPJ } from '@/lib/cnpj'
 
 export default function EditSecretaryPage({ params }: { params: { id: string } }) {
-  useRequireRole(['MAIN_MANAGER'], '/dashboard')
+  useRequireRole(['MAIN_MANAGER', 'SECRETARY_MANAGER'], '/dashboard')
   const router = useRouter()
 
   const [form, setForm] = useState({

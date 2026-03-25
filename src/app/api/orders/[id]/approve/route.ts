@@ -31,9 +31,25 @@ export async function POST(
     return NextResponse.json({ error: 'Acesso não autorizado' }, { status: 403 })
   }
 
-  const order = await prisma.order.findUnique({ where: { id: params.id } })
+  const order = await prisma.order.findUnique({
+    where: { id: params.id },
+    include: { items: { select: { quantity: true, referenceValue: true } } },
+  })
   if (!order) {
     return NextResponse.json({ error: 'Ordem de serviço não encontrada' }, { status: 404 })
+  }
+
+  // Verificar limite de aprovação do usuário (0 = sem limite)
+  if (authUser.approvalLimit > 0) {
+    const orderTotal = order.items.reduce((sum, item) => sum + item.quantity * item.referenceValue, 0)
+    if (orderTotal > authUser.approvalLimit) {
+      return NextResponse.json(
+        {
+          error: `Valor da OS (${orderTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}) excede seu limite de aprovação (${authUser.approvalLimit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })})`,
+        },
+        { status: 403 }
+      )
+    }
   }
 
   let body: { otpCode?: string; twoFactorRequestId?: string }

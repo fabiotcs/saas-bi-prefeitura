@@ -18,6 +18,7 @@ export interface UserDetail extends UserSummary {
   rg: string
   secretaryId: string | null
   documentVerified: boolean
+  approvalLimit: number
   createdAt: string
   updatedAt: string
 }
@@ -39,6 +40,7 @@ export interface CreateUserPayload {
   role: UserRole
   secretaryId?: string
   password?: string
+  approvalLimit?: number
 }
 
 export async function listUsers(params: ListUsersParams = {}) {
@@ -59,7 +61,7 @@ export async function createUser(payload: CreateUserPayload) {
   return data
 }
 
-export async function updateUser(id: string, payload: Partial<Pick<UserDetail, 'fullName' | 'phone' | 'role' | 'secretaryId'>>) {
+export async function updateUser(id: string, payload: Partial<Pick<UserDetail, 'fullName' | 'phone' | 'role' | 'secretaryId' | 'approvalLimit'>>) {
   const { data } = await api.patch<UserSummary>(`/api/users/${id}`, payload)
   return data
 }

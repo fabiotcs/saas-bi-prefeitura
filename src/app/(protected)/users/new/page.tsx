@@ -18,7 +18,7 @@ const ROLE_OPTIONS: { value: UserRole; label: string; description: string }[] = 
 ]
 
 export default function NewUserPage() {
-  useRequireRole(['MAIN_MANAGER'], '/users')
+  useRequireRole(['MAIN_MANAGER', 'SECRETARY_MANAGER'], '/users')
 
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -28,6 +28,7 @@ export default function NewUserPage() {
     email: '', cpf: '', rg: '',
     role: '' as UserRole | '',
     secretaryId: '', password: '',
+    approvalLimit: '',
   })
 
   function set(field: keyof typeof form, value: string) {
@@ -55,6 +56,7 @@ export default function NewUserPage() {
         role: form.role as UserRole,
         secretaryId: form.secretaryId || undefined,
         password: form.password || undefined,
+        approvalLimit: form.approvalLimit ? parseFloat(form.approvalLimit) : 0,
       })
       router.push('/users')
     } catch (err: unknown) {
@@ -121,6 +123,10 @@ export default function NewUserPage() {
           <div>
             <label className="block text-sm font-medium mb-1">Senha inicial</label>
             <Input type="password" value={form.password} placeholder="Mudar@123 (padrão)" onChange={e => set('password', e.target.value)} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Limite de Aprovação (R$)</label>
+            <Input type="number" min="0" step="0.01" value={form.approvalLimit} placeholder="0 = sem limite" onChange={e => set('approvalLimit', e.target.value)} />
           </div>
         </div>
 

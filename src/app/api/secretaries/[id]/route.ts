@@ -42,7 +42,10 @@ export async function PATCH(
   const authUser = await getAuthenticatedUser(request)
   if (!authUser) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
-  if (authUser.role !== 'MAIN_MANAGER') {
+  const isMainManager = authUser.role === 'MAIN_MANAGER'
+  const isOwningSecretary = authUser.role === 'SECRETARY_MANAGER' && authUser.secretaryId === params.id
+
+  if (!isMainManager && !isOwningSecretary) {
     return NextResponse.json({ error: 'Acesso não autorizado' }, { status: 403 })
   }
 
@@ -75,8 +78,9 @@ export async function PATCH(
       ...(body.cnpj && { cnpj: body.cnpj.replace(/\D/g, '') }),
       ...(body.description !== undefined && { description: body.description }),
       ...(body.secretaryPersonName && { secretaryPersonName: body.secretaryPersonName }),
-      ...(body.budgetAllocated !== undefined && { budgetAllocated: body.budgetAllocated }),
-      ...(body.parentId !== undefined && { parentId: body.parentId }),
+      // budgetAllocated e parentId: apenas MAIN_MANAGER pode alterar
+      ...(isMainManager && body.budgetAllocated !== undefined && { budgetAllocated: body.budgetAllocated }),
+      ...(isMainManager && body.parentId !== undefined && { parentId: body.parentId }),
     },
   })
 

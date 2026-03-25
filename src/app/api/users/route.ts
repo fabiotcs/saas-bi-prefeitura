@@ -69,8 +69,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const authUser = await getAuthenticatedUser(request)
   if (!authUser) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
-  if (authUser.role !== 'MAIN_MANAGER') {
-    return NextResponse.json({ error: 'Apenas MAIN_MANAGER pode criar usuários' }, { status: 403 })
+
+  const isMainManager = authUser.role === 'MAIN_MANAGER'
+  const isSecretaryManager = authUser.role === 'SECRETARY_MANAGER'
+
+  if (!isMainManager && !isSecretaryManager) {
+    return NextResponse.json({ error: 'Acesso não autorizado' }, { status: 403 })
   }
 
   const body = await request.json() as {
@@ -83,9 +87,22 @@ export async function POST(request: NextRequest) {
     role?: UserRole
     secretaryId?: string
     password?: string
+    approvalLimit?: number
   }
 
-  const { fullName, birthDate, phone, email, cpf, rg, role, secretaryId, password } = body
+  let { fullName, birthDate, phone, email, cpf, rg, role, secretaryId, password } = body
+  const approvalLimit = body.approvalLimit ?? 0
+
+  // SECRETARY_MANAGER só pode criar usuários na sua própria secretaria e com roles restritas
+  if (isSecretaryManager) {
+    if (!authUser.secretaryId) {
+      return NextResponse.json({ error: 'Gestor não está vinculado a uma secretaria' }, { status: 403 })
+    }
+    secretaryId = authUser.secretaryId
+    if (role === 'MAIN_MANAGER' || role === 'AUDIT_VIEWER') {
+      return NextResponse.json({ error: 'Não é permitido criar usuário com este perfil' }, { status: 403 })
+    }
+  }
 
   if (!fullName || !birthDate || !phone || !email || !cpf || !rg || !role) {
     return NextResponse.json(
@@ -127,6 +144,7 @@ export async function POST(request: NextRequest) {
       role,
       secretaryId: secretaryId ?? null,
       passwordHash,
+      approvalLimit,
     },
     select: {
       id: true, fullName: true, email: true, role: true,
