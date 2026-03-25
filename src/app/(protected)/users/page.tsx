@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { listUsers } from '@/services/user.service'
@@ -27,7 +27,7 @@ const ROLE_VARIANT: Record<UserRole, string> = {
 
 function useDebounce<T>(value: T, delay = 300): T {
   const [debouncedValue, setDebouncedValue] = useState(value)
-  useCallback(() => {
+  useEffect(() => {
     const t = setTimeout(() => setDebouncedValue(value), delay)
     return () => clearTimeout(t)
   }, [value, delay])
@@ -38,12 +38,14 @@ export default function UsersPage() {
   useRequireRole(['MAIN_MANAGER', 'SECRETARY_MANAGER'], '/dashboard')
 
   const [search, setSearch] = useState('')
+  const [emailFilter, setEmailFilter] = useState('')
   const [page, setPage] = useState(1)
   const debouncedSearch = useDebounce(search)
+  const debouncedEmail = useDebounce(emailFilter)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['users', { search: debouncedSearch, page }],
-    queryFn: () => listUsers({ search: debouncedSearch, page, limit: 20 }),
+    queryKey: ['users', { search: debouncedSearch, email: debouncedEmail, page }],
+    queryFn: () => listUsers({ search: debouncedSearch, email: debouncedEmail, page, limit: 20 }),
   })
 
   const users = data?.data ?? []
@@ -59,13 +61,27 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex gap-3 flex-wrap">
         <Input
           placeholder="Buscar por nome..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           className="max-w-xs"
         />
+        <Input
+          placeholder="Filtrar por e-mail..."
+          value={emailFilter}
+          onChange={(e) => { setEmailFilter(e.target.value); setPage(1) }}
+          className="max-w-xs"
+        />
+        {(search || emailFilter) && (
+          <button
+            onClick={() => { setSearch(''); setEmailFilter(''); setPage(1) }}
+            className="text-sm text-muted-foreground hover:text-foreground underline"
+          >
+            Limpar filtros
+          </button>
+        )}
       </div>
 
       <div className="rounded-md border">
