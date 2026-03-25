@@ -166,8 +166,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Bloqueia acesso se fraude detectada (HIGH) — AC Story 1.5
-    if (biometricResult.fraudAlertLevel === 'HIGH') {
+    // Bloqueia acesso se fraude detectada (HIGH ou MEDIUM) — edital: "suspeita de fraude bloqueia acesso"
+    if (biometricResult.fraudAlertLevel === 'HIGH' || biometricResult.fraudAlertLevel === 'MEDIUM') {
       await prisma.auditLog.create({
         data: {
           action: 'AUTH_BIOMETRIC_FRAUD_DETECTED',

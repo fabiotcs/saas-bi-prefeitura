@@ -74,7 +74,7 @@ export function LoginForm() {
 
       if (status === 403 && errMsg === 'fraud_detected') {
         setFraudAlertLevel('HIGH')
-        setError('Acesso bloqueado — fraude detectada.')
+        setError('Acesso bloqueado — suspeita de fraude ou inconsistência detectada. Evento registrado.')
       } else {
         setFraudAlertLevel('MEDIUM')
         setError('Verificação biométrica falhou. Tente novamente.')
