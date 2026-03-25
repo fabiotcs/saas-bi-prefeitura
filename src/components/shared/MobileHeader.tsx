@@ -10,7 +10,7 @@ export function MobileHeader() {
   return (
     <>
       {/* Mobile top bar */}
-      <header className="flex items-center justify-between px-4 py-3 bg-[var(--primary)] text-white lg:hidden">
+      <header className="flex items-center justify-between px-4 py-3 bg-primary text-primary-foreground lg:hidden">
         <div>
           <span className="font-bold text-base">SaaS BI</span>
           <span className="text-white/70 text-xs ml-2">Prefeitura de Araçuaí</span>

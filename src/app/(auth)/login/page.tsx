@@ -15,8 +15,7 @@ export default async function LoginPage() {
 
   return (
     <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ background: `var(--primary, #1E40AF)` }}
+      className="flex min-h-screen items-start justify-center py-8 bg-primary"
     >
       <div className="w-full max-w-md mx-auto px-4">
         <div className="bg-white rounded-2xl p-8 shadow-2xl">
@@ -31,8 +30,7 @@ export default async function LoginPage() {
               />
             ) : (
               <div
-                className="h-16 w-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-4"
-                style={{ background: `var(--primary, #1E40AF)` }}
+                className="h-16 w-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-4 bg-primary"
               >
                 P
               </div>

@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios'
 
 export const api: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: typeof window !== 'undefined' ? window.location.origin : '',
   timeout: 30_000,
   headers: { 'Content-Type': 'application/json' },
 })

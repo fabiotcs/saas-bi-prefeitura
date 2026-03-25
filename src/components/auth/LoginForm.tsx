@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BiometricCapture } from './BiometricCapture'
 import { api } from '@/lib/api'
+import { useAuthStore } from '@/store/auth.store'
 
 type LoginStep = 'credentials' | 'biometric'
 type FraudAlertLevel = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH'
 
 export function LoginForm() {
   const router = useRouter()
+  const setAuth = useAuthStore((state) => state.setAuth)
   const [step, setStep] = useState<LoginStep>('credentials')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -49,13 +51,19 @@ export function LoginForm() {
       const { data } = await api.post<{
         accessToken: string
         refreshToken: string
-        user: { id: string; fullName: string; role: string }
+        user: { id: string; fullName: string; email: string; role: string; photoUrl?: string; secretaryId?: string }
       }>('/api/auth/biometric-verify', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
 
-      localStorage.setItem('access_token', data.accessToken)
-      localStorage.setItem('refresh_token', data.refreshToken)
+      setAuth(data.accessToken, data.refreshToken, {
+        id: data.user.id,
+        fullName: data.user.fullName,
+        email: data.user.email,
+        role: data.user.role as 'MAIN_MANAGER' | 'SECRETARY_MANAGER' | 'SECRETARY_USER' | 'AUDIT_VIEWER',
+        photoUrl: data.user.photoUrl,
+        secretaryId: data.user.secretaryId,
+      })
       router.push('/dashboard')
     } catch (err: unknown) {
       const axiosErr = err as { response?: { status?: number; data?: { error?: string } } }
@@ -115,6 +123,22 @@ export function LoginForm() {
             fraudAlertLevel={fraudAlertLevel}
           />
           {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+          {process.env.NODE_ENV === 'development' && (
+            <Button
+              variant="outline"
+              className="w-full text-xs text-muted-foreground border-dashed"
+              disabled={loading}
+              onClick={async () => {
+                // Pixel 1x1 JPEG branco — apenas para demonstração em dev
+                const b64 = '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8AKf/Z'
+                const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+                const blob = new Blob([bytes], { type: 'image/jpeg' })
+                await handleBiometricCapture(blob)
+              }}
+            >
+              ⚡ Entrar sem câmera (modo dev)
+            </Button>
+          )}
           <Button
             variant="ghost"
             className="w-full text-sm"

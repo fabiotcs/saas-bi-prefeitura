@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
@@ -13,10 +13,20 @@ import {
   Package,
   BarChart3,
   ScanFace,
+  Palette,
+  Settings,
+  LogOut,
   X,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth.store'
 import type { UserRole } from '@/types'
+
+const ROLE_LABELS: Record<string, string> = {
+  MAIN_MANAGER: 'Gestor Principal',
+  SECRETARY_MANAGER: 'Gestor de Secretaria',
+  SECRETARY_USER: 'Usuário de Secretaria',
+  AUDIT_VIEWER: 'Auditor',
+}
 
 interface NavLink {
   href: string
@@ -40,6 +50,18 @@ const navLinks: NavLink[] = [
   { href: '/budget', label: 'Orçamento', icon: DollarSign },
   { href: '/stock', label: 'Estoque', icon: Package },
   { href: '/reports', label: 'Relatórios', icon: BarChart3 },
+  {
+    href: '/settings',
+    label: 'Configurações',
+    icon: Settings,
+    allowedRoles: ['MAIN_MANAGER'],
+  },
+  {
+    href: '/settings/brand',
+    label: 'Identidade Visual',
+    icon: Palette,
+    allowedRoles: ['MAIN_MANAGER'],
+  },
 ]
 
 interface SidebarProps {
@@ -48,7 +70,18 @@ interface SidebarProps {
 
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const user = useAuthStore((state) => state.user)
+  const logout = useAuthStore((state) => state.logout)
+
+  function handleLogout() {
+    logout()
+    router.push('/login')
+  }
+
+  const initials = user?.fullName
+    ? user.fullName.split(' ').slice(0, 2).map((n) => n[0]).join('').toUpperCase()
+    : '?'
 
   const visibleLinks = navLinks.filter(({ allowedRoles }) => {
     if (!allowedRoles) return true
@@ -56,7 +89,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   })
 
   return (
-    <aside className="flex h-full flex-col bg-[var(--primary)] text-white w-64">
+    <aside className="flex h-full flex-col bg-primary text-primary-foreground w-64">
       <div className="flex items-center justify-between px-6 py-5 border-b border-white/10">
         <div>
           <h2 className="font-bold text-lg leading-tight">SaaS BI</h2>
@@ -93,6 +126,28 @@ export function Sidebar({ onClose }: SidebarProps) {
           )
         })}
       </nav>
+
+      {/* Usuário logado */}
+      {user && (
+        <div className="border-t border-white/10 px-3 py-3">
+          <div className="flex items-center gap-3 px-2 py-2">
+            <div className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center text-white text-sm font-bold shrink-0">
+              {initials}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{user.fullName}</p>
+              <p className="text-xs text-white/60 truncate">{ROLE_LABELS[user.role] ?? user.role}</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="mt-1 w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            Sair
+          </button>
+        </div>
+      )}
     </aside>
   )
 }

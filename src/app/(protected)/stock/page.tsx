@@ -122,6 +122,9 @@ export default function StockPage() {
           >
             {emailMutation.isPending ? 'Enviando...' : emailStatus === 'success' ? '✓ E-mail enviado!' : emailStatus === 'error' ? '✗ Falha ao enviar' : '📧 Resumo por E-mail'}
           </Button>
+          <Button variant="outline" asChild>
+            <Link href="/stock/locations">Locais</Link>
+          </Button>
           <Button asChild>
             <Link href="/stock/items/new">+ Novo Item</Link>
           </Button>

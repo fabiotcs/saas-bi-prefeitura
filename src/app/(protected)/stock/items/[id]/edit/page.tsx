@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useRequireRole } from '@/hooks/useRequireRole'
+import { NovoLocalModal } from '@/components/stock/NovoLocalModal'
 
 interface StorageLocation {
   id: string
@@ -43,11 +44,13 @@ export default function EditStockItemPage() {
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [apiError, setApiError] = useState<string | null>(null)
+  const [showLocalModal, setShowLocalModal] = useState(false)
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<StockItemFormValues>()
 
@@ -197,7 +200,16 @@ export default function EditStockItemPage() {
 
         {/* Storage Location */}
         <div className="space-y-1.5">
-          <Label htmlFor="storageLocationId">Local de Armazenamento (opcional)</Label>
+          <div className="flex items-center justify-between">
+            <Label htmlFor="storageLocationId">Local de Armazenamento (opcional)</Label>
+            <button
+              type="button"
+              onClick={() => setShowLocalModal(true)}
+              className="text-xs text-primary hover:underline"
+            >
+              + Novo local
+            </button>
+          </div>
           <select
             id="storageLocationId"
             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -209,6 +221,16 @@ export default function EditStockItemPage() {
             ))}
           </select>
         </div>
+
+        {showLocalModal && (
+          <NovoLocalModal
+            onCreated={(id) => {
+              setValue('storageLocationId', id)
+              setShowLocalModal(false)
+            }}
+            onClose={() => setShowLocalModal(false)}
+          />
+        )}
 
         {/* API error */}
         {apiError && (
