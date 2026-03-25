@@ -40,13 +40,15 @@ export function LoginForm() {
     }
   }
 
-  async function handleBiometricCapture(imageBlob: Blob) {
+  async function handleBiometricCapture(imageBlob: Blob, motionScore: number, frameCount: number) {
     setLoading(true)
     setError('')
     try {
       const formData = new FormData()
       formData.append('challengeToken', challengeToken)
       formData.append('faceImage', imageBlob, 'face.jpg')
+      formData.append('motionScore', String(motionScore))
+      formData.append('frameCount', String(frameCount))
 
       const { data } = await api.post<{
         accessToken: string
@@ -133,7 +135,7 @@ export function LoginForm() {
                 const b64 = '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAT8AKf/Z'
                 const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
                 const blob = new Blob([bytes], { type: 'image/jpeg' })
-                await handleBiometricCapture(blob)
+                await handleBiometricCapture(blob, 0, 1)
               }}
             >
               ⚡ Entrar sem câmera (modo dev)

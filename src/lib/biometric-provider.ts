@@ -16,8 +16,20 @@ export interface BiometricResult {
   documentSimilarityScore?: number
 }
 
+export interface LivenessContext {
+  /** Score de movimento médio entre frames capturados pelo cliente (0–100). 0 = foto/vídeo estático */
+  motionScore?: number
+  /** Número de frames analisados pelo cliente */
+  frameCount?: number
+}
+
 export interface BiometricProvider {
-  verify(faceImageBuffer: Buffer, referenceImageUrl?: string, documentImageBuffer?: Buffer): Promise<BiometricResult>
+  verify(
+    faceImageBuffer: Buffer,
+    referenceImageUrl?: string,
+    documentImageBuffer?: Buffer,
+    livenessContext?: LivenessContext
+  ): Promise<BiometricResult>
 }
 
 /**
@@ -104,13 +116,52 @@ export function compareWithDocument(selfieBuffer: Buffer, docBuffer: Buffer): nu
 }
 
 /**
- * MockBiometricProvider — PoC com liveness detection real via análise de textura.
+ * Combina score de variância de pixels (servidor) com score de movimento entre frames (cliente).
+ *
+ * Anti-spoofing logic:
+ * - Foto impressa: baixa variância de pixels + motionScore ≈ 0 (frame único)
+ * - Vídeo em replay: variância ok, mas motionScore baixo (frames idênticos)
+ * - Máscara: variância reduzida + textura diferente de pele
+ * - Face real: variância normal + motionScore >= 15 (micromovimentos naturais)
+ */
+export function combinedLivenessScore(
+  pixelVarianceScore: number,
+  motionScore?: number,
+  frameCount?: number
+): number {
+  if (motionScore === undefined || frameCount === undefined || frameCount < 3) {
+    // Sem dados de movimento — confia apenas na variância
+    return pixelVarianceScore
+  }
+
+  // Vídeo em replay: frames consistentes = motionScore baixo (< 8)
+  // Foto impressa: motionScore ≈ 0
+  // Máscara: motionScore pode ser normal, variância anormal
+  const motionBonus = Math.min(30, motionScore * 1.5)
+  const motionPenalty = motionScore < 8 ? 30 : 0 // provável vídeo/foto
+
+  const combined = pixelVarianceScore + motionBonus - motionPenalty
+  return Math.max(0, Math.min(100, Math.round(combined)))
+}
+
+/**
+ * MockBiometricProvider — liveness com análise de textura + movimento multi-frame.
  * Produção: substituir por AwsRekognitionProvider.
  */
 export class MockBiometricProvider implements BiometricProvider {
-  async verify(faceImageBuffer: Buffer, _referenceImageUrl?: string, documentImageBuffer?: Buffer): Promise<BiometricResult> {
-    // Liveness real: análise de variância de pixels
-    const livenessScore = assessLivenessFromBuffer(faceImageBuffer)
+  async verify(
+    faceImageBuffer: Buffer,
+    _referenceImageUrl?: string,
+    documentImageBuffer?: Buffer,
+    livenessContext?: LivenessContext
+  ): Promise<BiometricResult> {
+    // Liveness: variância de pixels + score de movimento entre frames
+    const pixelScore = assessLivenessFromBuffer(faceImageBuffer)
+    const livenessScore = combinedLivenessScore(
+      pixelScore,
+      livenessContext?.motionScore,
+      livenessContext?.frameCount
+    )
 
     // Para PoC: similaridade simulada (produção: embedding comparison)
     const similarityScore = faceImageBuffer.length > 0 ? 85 : 0

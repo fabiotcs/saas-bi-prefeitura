@@ -82,6 +82,10 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const challengeToken = formData.get('challengeToken') as string | null
     const faceImage = formData.get('faceImage') as File | null
+    const motionScoreRaw = formData.get('motionScore')
+    const frameCountRaw = formData.get('frameCount')
+    const motionScore = motionScoreRaw ? Number(motionScoreRaw) : undefined
+    const frameCount = frameCountRaw ? Number(frameCountRaw) : undefined
 
     if (!challengeToken || !faceImage) {
       return NextResponse.json(
@@ -113,10 +117,15 @@ export async function POST(request: NextRequest) {
     // Carrega buffer do documento se disponível
     const documentBuffer = await loadDocumentBuffer(user.documentPhotoUrl ?? null)
 
-    // Executa verificação biométrica com análise de documento e IA
+    // Executa verificação biométrica com análise de documento, IA e liveness multi-frame
     const faceBuffer = Buffer.from(await faceImage.arrayBuffer())
     const provider = getBiometricProvider()
-    const biometricResult = await provider.verify(faceBuffer, user.photoUrl ?? undefined, documentBuffer)
+    const biometricResult = await provider.verify(
+      faceBuffer,
+      user.photoUrl ?? undefined,
+      documentBuffer,
+      { motionScore, frameCount }
+    )
 
     // Salva BiometricRecord (sempre, sucesso ou falha)
     const capturedImageUrl = `/uploads/biometric/${userId}-${Date.now()}.jpg`
@@ -172,6 +181,8 @@ export async function POST(request: NextRequest) {
             fraudAlertLevel: biometricResult.fraudAlertLevel,
             aiEstimatedAge: biometricResult.aiEstimatedAge,
             aiEstimatedGender: biometricResult.aiEstimatedGender,
+            motionScore,
+            frameCount,
           },
         },
       })
@@ -231,6 +242,8 @@ export async function POST(request: NextRequest) {
           aiEstimatedAge: biometricResult.aiEstimatedAge,
           aiEstimatedGender: biometricResult.aiEstimatedGender,
           documentMatch: biometricResult.documentMatch,
+          motionScore,
+          frameCount,
         },
       },
     })
