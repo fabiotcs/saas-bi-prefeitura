@@ -4,12 +4,15 @@ export interface SecretaryBudget {
   id: string
   name: string
   budgetAllocated: number
+  budgetCommitted: number
   budgetUsed: number
   budgetRemaining: number
   percentUsed: number
+  percentCommitted: number
 }
 
 export interface OrdersSummary {
+  draft: number
   open: number
   inProgress: number
   pendingApproval: number

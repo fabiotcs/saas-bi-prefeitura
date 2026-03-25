@@ -8,11 +8,12 @@ interface OrderStatusChartProps {
 }
 
 const STATUS_CONFIG = [
+  { key: 'draft', label: 'Rascunho', color: '#9CA3AF' },
   { key: 'open', label: 'Em Aberto', color: '#3B82F6' },
-  { key: 'inProgress', label: 'Em Cotação', color: '#F59E0B' },
+  { key: 'inProgress', label: 'Em Andamento', color: '#F59E0B' },
   { key: 'pendingApproval', label: 'Aguardando Aprovação', color: '#8B5CF6' },
-  { key: 'finished', label: 'Concluídas', color: '#10B981' },
-  { key: 'cancelled', label: 'Canceladas', color: '#EF4444' },
+  { key: 'finished', label: 'Finalizados', color: '#10B981' },
+  { key: 'cancelled', label: 'Cancelados', color: '#EF4444' },
 ] as const
 
 export function OrderStatusChart({ ordersSummary }: OrderStatusChartProps) {

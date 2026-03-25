@@ -69,11 +69,15 @@ export default function DashboardPage() {
         {/* Orders summary mini cards */}
         <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-4">
           <div className="rounded-xl border bg-card p-4 space-y-1">
+            <p className="text-xs text-muted-foreground">Rascunho</p>
+            <p className="text-2xl font-bold text-gray-500">{data.ordersSummary.draft}</p>
+          </div>
+          <div className="rounded-xl border bg-card p-4 space-y-1">
             <p className="text-xs text-muted-foreground">Em Aberto</p>
             <p className="text-2xl font-bold text-blue-600">{data.ordersSummary.open}</p>
           </div>
           <div className="rounded-xl border bg-card p-4 space-y-1">
-            <p className="text-xs text-muted-foreground">Em Cotação</p>
+            <p className="text-xs text-muted-foreground">Em Andamento</p>
             <p className="text-2xl font-bold text-yellow-600">{data.ordersSummary.inProgress}</p>
           </div>
           <div className="rounded-xl border bg-card p-4 space-y-1">
@@ -81,11 +85,11 @@ export default function DashboardPage() {
             <p className="text-2xl font-bold text-purple-600">{data.ordersSummary.pendingApproval}</p>
           </div>
           <div className="rounded-xl border bg-card p-4 space-y-1">
-            <p className="text-xs text-muted-foreground">Concluídas</p>
+            <p className="text-xs text-muted-foreground">Finalizados</p>
             <p className="text-2xl font-bold text-green-600">{data.ordersSummary.finished}</p>
           </div>
           <div className="rounded-xl border bg-card p-4 space-y-1">
-            <p className="text-xs text-muted-foreground">Canceladas</p>
+            <p className="text-xs text-muted-foreground">Cancelados</p>
             <p className="text-2xl font-bold text-red-600">{data.ordersSummary.cancelled}</p>
           </div>
         </div>

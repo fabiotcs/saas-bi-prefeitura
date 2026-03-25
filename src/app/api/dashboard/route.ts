@@ -27,34 +27,45 @@ export async function GET(request: NextRequest) {
   const budgetUsed = contracts.reduce((sum, c) => sum + c.consumedInOrders, 0)
   const budgetRemaining = budgetTotal - budgetUsed
 
-  // Secretary list with budget info
+  // Secretary list with budget info (including committed via BudgetCommitment)
   const secretaries = await prisma.secretary.findMany({
     select: {
       id: true,
       name: true,
       budgetAllocated: true,
       budgetUsed: true,
+      commitments: {
+        where: { status: 'ACTIVE' },
+        select: { value: true },
+      },
     },
     orderBy: { name: 'asc' },
   })
 
-  const secretaryList = secretaries.map((s) => ({
-    id: s.id,
-    name: s.name,
-    budgetAllocated: s.budgetAllocated,
-    budgetUsed: s.budgetUsed,
-    budgetRemaining: s.budgetAllocated - s.budgetUsed,
-    percentUsed: s.budgetAllocated > 0 ? (s.budgetUsed / s.budgetAllocated) * 100 : 0,
-  }))
+  const secretaryList = secretaries.map((s) => {
+    const budgetCommitted = s.commitments.reduce((sum, c) => sum + c.value, 0)
+    return {
+      id: s.id,
+      name: s.name,
+      budgetAllocated: s.budgetAllocated,
+      budgetCommitted,
+      budgetUsed: s.budgetUsed,
+      budgetRemaining: s.budgetAllocated - s.budgetUsed,
+      percentUsed: s.budgetAllocated > 0 ? (s.budgetUsed / s.budgetAllocated) * 100 : 0,
+      percentCommitted: s.budgetAllocated > 0 ? (budgetCommitted / s.budgetAllocated) * 100 : 0,
+    }
+  })
 
   // Orders summary by status
   const [
+    draftCount,
     openCount,
     inProgressCount,
     pendingApprovalCount,
     finishedCount,
     cancelledCount,
   ] = await Promise.all([
+    prisma.order.count({ where: { status: 'DRAFT' } }),
     prisma.order.count({ where: { status: 'OPEN' } }),
     prisma.order.count({ where: { status: 'IN_QUOTATION' } }),
     prisma.order.count({ where: { status: 'APPROVED' } }),
@@ -63,6 +74,7 @@ export async function GET(request: NextRequest) {
   ])
 
   const ordersSummary = {
+    draft: draftCount,
     open: openCount,
     inProgress: inProgressCount,
     pendingApproval: pendingApprovalCount,
