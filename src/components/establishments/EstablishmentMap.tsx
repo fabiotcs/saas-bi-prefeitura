@@ -110,11 +110,15 @@ export default function EstablishmentMap({
 
     void initMap()
 
+    // Captura o valor do ref no corpo do effect para uso seguro no cleanup
+    const markersSnapshot = markersRef.current
+
     return () => {
-      if (mapRef.current) {
-        mapRef.current.remove()
+      const map = mapRef.current
+      if (map) {
+        map.remove()
         mapRef.current = null
-        markersRef.current.clear()
+        markersSnapshot.clear()
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

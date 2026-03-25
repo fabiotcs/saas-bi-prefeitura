@@ -1,7 +1,39 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { useBiometricHistory } from '@/hooks/useBiometricHistory'
+
+const FALLBACK_AVATAR =
+  'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="%23e5e7eb" viewBox="0 0 24 24"%3E%3Cpath d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/%3E%3C/svg%3E'
+
+function AuditImage({
+  src,
+  alt,
+  width,
+  height,
+  className,
+}: {
+  src: string
+  alt: string
+  width: number
+  height: number
+  className: string
+}) {
+  const [imgSrc, setImgSrc] = useState(src)
+  return (
+    <Image
+      src={imgSrc}
+      alt={alt}
+      width={width}
+      height={height}
+      className={className}
+      style={{ objectFit: 'cover' }}
+      unoptimized
+      onError={() => setImgSrc(FALLBACK_AVATAR)}
+    />
+  )
+}
 import {
   Table,
   TableBody,
@@ -211,29 +243,23 @@ export default function BiometricHistoryPage() {
                 {data?.data.map((record) => (
                   <TableRow key={record.id} className={record.fraudAlertLevel === 'HIGH' ? 'bg-red-50' : record.fraudAlertLevel === 'MEDIUM' ? 'bg-yellow-50' : ''}>
                     <TableCell>
-                      <img
+                      <AuditImage
                         src={record.capturedImageUrl}
                         alt="Imagem capturada"
                         width={48}
                         height={48}
                         className="rounded object-cover"
-                        style={{ width: 48, height: 48, objectFit: 'cover' }}
-                        onError={(e) => {
-                          ;(e.currentTarget as HTMLImageElement).src =
-                            'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="%23e5e7eb" viewBox="0 0 24 24"%3E%3Cpath d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/%3E%3C/svg%3E'
-                        }}
                       />
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {record.user.photoUrl && (
-                          <img
+                          <AuditImage
                             src={record.user.photoUrl}
                             alt={record.user.fullName}
                             width={32}
                             height={32}
                             className="rounded-full object-cover"
-                            style={{ width: 32, height: 32, objectFit: 'cover' }}
                           />
                         )}
                         <div>

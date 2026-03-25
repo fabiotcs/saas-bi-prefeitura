@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { listMessages, sendMessage, sendImageMessage, type ChatMessage } from '@/services/chat.service'
 import { Button } from '@/components/ui/button'
@@ -23,7 +23,7 @@ export function OrderChat({ orderId, currentUserId }: OrderChatProps) {
     queryFn: () => listMessages(orderId),
     refetchInterval: 3000,
   })
-  const messages = data?.data ?? []
+  const messages = useMemo(() => data?.data ?? [], [data])
 
   // SSE for real-time updates
   useEffect(() => {

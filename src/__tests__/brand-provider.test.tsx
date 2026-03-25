@@ -24,14 +24,14 @@ describe('BrandProvider', () => {
     render(
       React.createElement(BrandProvider, { config: mockConfig }, React.createElement('div'))
     )
-    expect(document.documentElement.style.getPropertyValue('--primary')).toBe('#1E40AF')
+    expect(document.documentElement.style.getPropertyValue('--primary')).toBe('226 71% 40%')
   })
 
   it('injects --secondary CSS variable from brandConfig', () => {
     render(
       React.createElement(BrandProvider, { config: mockConfig }, React.createElement('div'))
     )
-    expect(document.documentElement.style.getPropertyValue('--secondary')).toBe('#1E3A8A')
+    expect(document.documentElement.style.getPropertyValue('--secondary')).toBe('224 64% 33%')
   })
 
   it('does not throw when config is null', () => {

@@ -41,8 +41,8 @@ const mockContracts = [
 ]
 
 const mockSecretaries = [
-  { id: 'sec-1', name: 'Secretaria de Educação', budgetAllocated: 600000, budgetUsed: 250000 },
-  { id: 'sec-2', name: 'Secretaria de Saúde', budgetAllocated: 400000, budgetUsed: 300000 },
+  { id: 'sec-1', name: 'Secretaria de Educação', budgetAllocated: 600000, budgetUsed: 250000, commitments: [] },
+  { id: 'sec-2', name: 'Secretaria de Saúde', budgetAllocated: 400000, budgetUsed: 300000, commitments: [] },
 ]
 
 const mockRecentOrders = [
@@ -75,6 +75,7 @@ describe('GET /api/dashboard', () => {
     vi.mocked(prisma.secretary.findMany).mockResolvedValue(mockSecretaries as never)
     // order.count returns different values per call based on where clause
     vi.mocked(prisma.order.count)
+      .mockResolvedValueOnce(0)  // draft
       .mockResolvedValueOnce(5)  // open
       .mockResolvedValueOnce(3)  // inProgress
       .mockResolvedValueOnce(2)  // pendingApproval
