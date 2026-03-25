@@ -17,6 +17,7 @@ import {
   Settings,
   LogOut,
   X,
+  UserCircle,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/auth.store'
 import type { UserRole } from '@/types'
@@ -130,7 +131,11 @@ export function Sidebar({ onClose }: SidebarProps) {
       {/* Usuário logado */}
       {user && (
         <div className="border-t border-white/10 px-3 py-3">
-          <div className="flex items-center gap-3 px-2 py-2">
+          <Link
+            href="/profile"
+            onClick={onClose}
+            className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/10 transition-colors group"
+          >
             <div className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center text-white text-sm font-bold shrink-0">
               {initials}
             </div>
@@ -138,7 +143,8 @@ export function Sidebar({ onClose }: SidebarProps) {
               <p className="text-sm font-medium text-white truncate">{user.fullName}</p>
               <p className="text-xs text-white/60 truncate">{ROLE_LABELS[user.role] ?? user.role}</p>
             </div>
-          </div>
+            <UserCircle className="h-4 w-4 text-white/40 group-hover:text-white/80 shrink-0 transition-colors" />
+          </Link>
           <button
             onClick={handleLogout}
             className="mt-1 w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-white/70 hover:bg-white/10 hover:text-white transition-colors"
