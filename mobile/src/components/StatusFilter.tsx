@@ -1,15 +1,15 @@
 import React from 'react'
 import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native'
-import type { MobileOrder } from '../services/orders.service'
+import type { OrderStatus } from '../services/orders.service'
 
-type Status = MobileOrder['status'] | 'ALL'
+type Status = OrderStatus | 'ALL'
 
 const STATUSES: { key: Status; label: string }[] = [
   { key: 'ALL', label: 'Todos' },
   { key: 'OPEN', label: 'Abertos' },
   { key: 'IN_QUOTATION', label: 'Em Cotação' },
   { key: 'APPROVED', label: 'Aprovados' },
-  { key: 'IN_PROGRESS', label: 'Em Andamento' },
+  { key: 'DELIVERED', label: 'Entregues' },
   { key: 'COMPLETED', label: 'Concluídos' },
   { key: 'CANCELLED', label: 'Cancelados' },
 ]
@@ -44,15 +44,8 @@ export default function StatusFilter({ selected, onSelect }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    maxHeight: 52,
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
-    flexDirection: 'row',
-  },
+  container: { maxHeight: 52, flex: 1 },
+  content: { paddingHorizontal: 16, paddingVertical: 8, gap: 8, flexDirection: 'row' },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 6,
@@ -61,16 +54,7 @@ const styles = StyleSheet.create({
     borderColor: '#d1d5db',
     backgroundColor: '#fff',
   },
-  chipActive: {
-    backgroundColor: '#1a56db',
-    borderColor: '#1a56db',
-  },
-  chipText: {
-    fontSize: 13,
-    color: '#374151',
-    fontWeight: '500',
-  },
-  chipTextActive: {
-    color: '#fff',
-  },
+  chipActive: { backgroundColor: '#1a56db', borderColor: '#1a56db' },
+  chipText: { fontSize: 13, color: '#374151', fontWeight: '500' },
+  chipTextActive: { color: '#fff' },
 })

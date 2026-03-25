@@ -6,7 +6,8 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
   OPEN: { label: 'Aberto', color: '#1d4ed8', bg: '#dbeafe' },
   IN_QUOTATION: { label: 'Em Cotação', color: '#92400e', bg: '#fef3c7' },
   APPROVED: { label: 'Aprovado', color: '#065f46', bg: '#d1fae5' },
-  IN_PROGRESS: { label: 'Em Andamento', color: '#c2410c', bg: '#ffedd5' },
+  DRAFT: { label: 'Rascunho', color: '#6b7280', bg: '#f3f4f6' },
+  DELIVERED: { label: 'Entregue', color: '#c2410c', bg: '#ffedd5' },
   COMPLETED: { label: 'Concluído', color: '#14532d', bg: '#dcfce7' },
   CANCELLED: { label: 'Cancelado', color: '#991b1b', bg: '#fee2e2' },
 }

@@ -29,7 +29,7 @@ export default function HomeScreen() {
       setError(null)
       const [dashboard, user] = await Promise.all([getDashboardData(), getUser()])
       setData(dashboard)
-      if (user) setUserName(user.name)
+      if (user) setUserName((user as { fullName?: string; name?: string }).fullName ?? (user as { name?: string }).name ?? '')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar dashboard.')
     }
