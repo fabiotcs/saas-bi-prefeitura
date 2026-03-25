@@ -91,9 +91,10 @@ export async function getOrderById(id: string) {
 export interface ItemSearchResult {
   id: string
   name: string
-  imageUrl?: string
+  imageUrl?: string | null
   unit: string
   referenceValue: number
+  category?: string | null
 }
 
 export async function searchItems(q: string) {

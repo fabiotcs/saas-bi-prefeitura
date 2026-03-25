@@ -471,13 +471,26 @@ export default function NewOrderPage() {
                     <button
                       key={item.id}
                       type="button"
-                      className="w-full text-left px-3 py-2 hover:bg-muted text-sm flex justify-between items-center"
+                      className="w-full text-left px-3 py-2 hover:bg-muted text-sm flex items-center gap-3"
                       onClick={() => handleSelectItem(item)}
                     >
-                      <span>{item.name}</span>
-                      <span className="text-muted-foreground text-xs">
-                        {item.unit} | R$ {item.referenceValue.toFixed(2)}
-                      </span>
+                      {item.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="w-8 h-8 rounded object-cover shrink-0"
+                          style={{ width: 32, height: 32, objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded bg-muted shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="truncate font-medium">{item.name}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {item.category ? `${item.category} · ` : ''}{item.unit} | R$ {item.referenceValue.toFixed(2)}
+                        </p>
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -486,10 +499,21 @@ export default function NewOrderPage() {
 
             {selectedItem && (
               <div className="flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm">
+                {selectedItem.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selectedItem.imageUrl}
+                    alt={selectedItem.name}
+                    className="w-12 h-12 rounded object-cover shrink-0"
+                    style={{ width: 48, height: 48, objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded bg-blue-100 shrink-0" />
+                )}
                 <div className="flex-1">
                   <p className="font-medium">{selectedItem.name}</p>
                   <p className="text-muted-foreground">
-                    Unidade: {selectedItem.unit} | Valor ref.: R$ {selectedItem.referenceValue.toFixed(2)}
+                    {selectedItem.category ? `Categoria: ${selectedItem.category} · ` : ''}Unidade: {selectedItem.unit} | Valor ref.: R$ {selectedItem.referenceValue.toFixed(2)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

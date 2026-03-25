@@ -14,31 +14,37 @@ async function getAuthenticatedUser(request: NextRequest) {
   }
 }
 
-const ITEM_CATALOG = [
-  { id: '1', name: 'Papel A4 (resma 500 folhas)', unit: 'resma', referenceValue: 25.90, imageUrl: null },
-  { id: '2', name: 'Caneta Esferográfica Azul', unit: 'caixa c/50', referenceValue: 18.50, imageUrl: null },
-  { id: '3', name: 'Toner para Impressora HP LaserJet', unit: 'unidade', referenceValue: 180.00, imageUrl: null },
-  { id: '4', name: 'Cadeira Ergonômica de Escritório', unit: 'unidade', referenceValue: 650.00, imageUrl: null },
-  { id: '5', name: 'Mesa de Escritório 1,20m', unit: 'unidade', referenceValue: 420.00, imageUrl: null },
-  { id: '6', name: 'Computador Desktop Core i5', unit: 'unidade', referenceValue: 2800.00, imageUrl: null },
-  { id: '7', name: 'Monitor LED 21"', unit: 'unidade', referenceValue: 750.00, imageUrl: null },
-  { id: '8', name: 'Clipes para papel (caixa)', unit: 'caixa', referenceValue: 3.90, imageUrl: null },
-  { id: '9', name: 'Envelope A4 pardo (100 unidades)', unit: 'pacote', referenceValue: 28.00, imageUrl: null },
-  { id: '10', name: 'Gasolina Comum', unit: 'litro', referenceValue: 5.89, imageUrl: null },
-  { id: '11', name: 'Álcool em Gel 70% (1L)', unit: 'unidade', referenceValue: 12.50, imageUrl: null },
-  { id: '12', name: 'Caixa de Arquivo Morto', unit: 'unidade', referenceValue: 8.90, imageUrl: null },
-]
-
 export async function GET(request: NextRequest) {
   const authUser = await getAuthenticatedUser(request)
   if (!authUser) return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
 
   const { searchParams } = request.nextUrl
-  const q = (searchParams.get('q') ?? '').toLowerCase().trim()
+  const q = (searchParams.get('q') ?? '').trim()
 
-  const data = q
-    ? ITEM_CATALOG.filter((item) => item.name.toLowerCase().includes(q))
-    : ITEM_CATALOG
+  const items = await prisma.stockItem.findMany({
+    where: q
+      ? { name: { contains: q, mode: 'insensitive' } }
+      : undefined,
+    select: {
+      id: true,
+      name: true,
+      imageUrl: true,
+      unit: true,
+      unitPrice: true,
+      abcClass: true,
+    },
+    orderBy: { name: 'asc' },
+    take: 20,
+  })
+
+  const data = items.map((item) => ({
+    id: item.id,
+    name: item.name,
+    imageUrl: item.imageUrl ?? null,
+    unit: item.unit,
+    referenceValue: item.unitPrice,
+    category: item.abcClass ?? null,
+  }))
 
   return NextResponse.json({ data })
 }
