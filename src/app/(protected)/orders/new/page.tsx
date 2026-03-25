@@ -515,6 +515,7 @@ export default function NewOrderPage() {
               <table className="w-full text-sm">
                 <thead className="bg-muted">
                   <tr>
+                    <th className="text-left px-3 py-2 w-12">Imagem</th>
                     <th className="text-left px-3 py-2">Item</th>
                     <th className="text-left px-3 py-2">Unidade</th>
                     <th className="text-right px-3 py-2">Qtd</th>
@@ -525,6 +526,21 @@ export default function NewOrderPage() {
                 <tbody className="divide-y">
                   {items.map((item) => (
                     <tr key={item._tempId}>
+                      <td className="px-3 py-2">
+                        {item.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-10 h-10 rounded object-cover"
+                            style={{ width: 40, height: 40, objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-muted flex items-center justify-center text-muted-foreground text-xs">
+                            —
+                          </div>
+                        )}
+                      </td>
                       <td className="px-3 py-2">{item.name}</td>
                       <td className="px-3 py-2 text-muted-foreground">{item.unit}</td>
                       <td className="px-3 py-2 text-right">{item.quantity}</td>
