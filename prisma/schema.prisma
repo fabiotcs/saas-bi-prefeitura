@@ -144,6 +144,7 @@ model User {
   biometricVerified Boolean   @default(false)
   documentVerified  Boolean   @default(false)
   approvalLimit     Float     @default(0)
+  documentPhotoUrl  String?
   passwordHash      String
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -214,18 +215,21 @@ model AuditLog {
 }
 
 model BiometricRecord {
-  id               String          @id @default(uuid())
-  userId           String
-  user             User            @relation(fields: [userId], references: [id])
-  capturedImageUrl String
-  similarityScore  Float
-  livenessScore    Float
-  confidenceLevel  Float
-  fraudAlertLevel  FraudAlertLevel
-  aiEstimatedAge   Int?
-  ipAddress        String
-  status           BiometricStatus
-  createdAt        DateTime        @default(now())
+  id                  String          @id @default(uuid())
+  userId              String
+  user                User            @relation(fields: [userId], references: [id])
+  capturedImageUrl    String
+  documentPhotoUrl    String?
+  similarityScore     Float
+  livenessScore       Float
+  confidenceLevel     Float
+  fraudAlertLevel     FraudAlertLevel
+  aiEstimatedAge      Int?
+  aiEstimatedGender   String?
+  documentMatch       Boolean         @default(false)
+  ipAddress           String
+  status              BiometricStatus
+  createdAt           DateTime        @default(now())
 
   @@index([userId])
   @@index([status])

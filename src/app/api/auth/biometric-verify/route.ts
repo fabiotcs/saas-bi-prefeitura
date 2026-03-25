@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { readFile } from 'fs/promises'
+import path from 'path'
 import { prisma } from '@/lib/prisma'
 import { signToken, verifyToken } from '@/lib/jwt'
 import { getBiometricProvider } from '@/lib/biometric-provider'
+import { mailer, FROM_ADDRESS, buildFraudAlertEmailHtml } from '@/lib/mailer'
 
 function getClientIp(request: NextRequest): string {
   return (
@@ -9,6 +12,69 @@ function getClientIp(request: NextRequest): string {
     request.headers.get('x-real-ip') ??
     'unknown'
   )
+}
+
+async function loadDocumentBuffer(documentPhotoUrl: string | null): Promise<Buffer | undefined> {
+  if (!documentPhotoUrl) return undefined
+  try {
+    const filePath = path.join(process.cwd(), 'public', documentPhotoUrl)
+    return await readFile(filePath)
+  } catch {
+    return undefined
+  }
+}
+
+async function notifyManagersOfFraud(
+  userId: string,
+  userName: string,
+  userEmail: string,
+  fraudLevel: 'MEDIUM' | 'HIGH',
+  data: {
+    livenessScore: number
+    similarityScore: number
+    aiEstimatedAge?: number
+    aiEstimatedGender?: string
+    documentMatch: boolean
+    ipAddress: string
+  }
+) {
+  try {
+    const managers = await prisma.user.findMany({
+      where: { role: { in: ['MAIN_MANAGER', 'SECRETARY_MANAGER'] } },
+      select: { fullName: true, email: true },
+    })
+
+    const occurredAt = new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).format(new Date())
+
+    await Promise.allSettled(
+      managers.map((m) =>
+        mailer.sendMail({
+          from: FROM_ADDRESS,
+          to: m.email,
+          subject: `${fraudLevel === 'HIGH' ? '🚨 ALERTA FRAUDE' : '⚠️ Inconsistência'} Biométrica — ${userName}`,
+          html: buildFraudAlertEmailHtml({
+            userName,
+            userEmail,
+            fraudLevel,
+            livenessScore: data.livenessScore,
+            similarityScore: data.similarityScore,
+            aiEstimatedAge: data.aiEstimatedAge,
+            aiEstimatedGender: data.aiEstimatedGender,
+            documentMatch: data.documentMatch,
+            ipAddress: data.ipAddress,
+            occurredAt,
+            recipientName: m.fullName,
+            recipientEmail: m.email,
+          }),
+        }).catch((err) => console.warn(`Falha ao enviar alerta para ${m.email}:`, err))
+      )
+    )
+  } catch (err) {
+    console.warn('Erro ao notificar gestores:', err)
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -44,10 +110,13 @@ export async function POST(request: NextRequest) {
     const ipAddress = getClientIp(request)
     const userAgent = request.headers.get('user-agent') ?? 'unknown'
 
-    // Executa verificação biométrica
+    // Carrega buffer do documento se disponível
+    const documentBuffer = await loadDocumentBuffer(user.documentPhotoUrl ?? null)
+
+    // Executa verificação biométrica com análise de documento e IA
     const faceBuffer = Buffer.from(await faceImage.arrayBuffer())
     const provider = getBiometricProvider()
-    const biometricResult = await provider.verify(faceBuffer, user.photoUrl ?? undefined)
+    const biometricResult = await provider.verify(faceBuffer, user.photoUrl ?? undefined, documentBuffer)
 
     // Salva BiometricRecord (sempre, sucesso ou falha)
     const capturedImageUrl = `/uploads/biometric/${userId}-${Date.now()}.jpg`
@@ -55,15 +124,38 @@ export async function POST(request: NextRequest) {
       data: {
         userId,
         capturedImageUrl,
+        documentPhotoUrl: user.documentPhotoUrl ?? null,
         similarityScore: biometricResult.similarityScore,
         livenessScore: biometricResult.livenessScore,
         confidenceLevel: biometricResult.confidenceLevel,
         fraudAlertLevel: biometricResult.fraudAlertLevel,
         aiEstimatedAge: biometricResult.aiEstimatedAge ?? null,
+        aiEstimatedGender: biometricResult.aiEstimatedGender ?? null,
+        documentMatch: biometricResult.documentMatch,
         ipAddress,
-        status: biometricResult.match ? 'SUCCESS' : 'FAILED',
+        status: biometricResult.fraudAlertLevel === 'HIGH'
+          ? 'SUSPICIOUS'
+          : biometricResult.match ? 'SUCCESS' : 'FAILED',
       },
     })
+
+    // Notificar gestores se fraude HIGH ou MEDIUM
+    if (biometricResult.fraudAlertLevel === 'HIGH' || biometricResult.fraudAlertLevel === 'MEDIUM') {
+      await notifyManagersOfFraud(
+        userId,
+        user.fullName,
+        user.email,
+        biometricResult.fraudAlertLevel,
+        {
+          livenessScore: biometricResult.livenessScore,
+          similarityScore: biometricResult.similarityScore,
+          aiEstimatedAge: biometricResult.aiEstimatedAge,
+          aiEstimatedGender: biometricResult.aiEstimatedGender,
+          documentMatch: biometricResult.documentMatch,
+          ipAddress,
+        }
+      )
+    }
 
     // Bloqueia acesso se fraude detectada (HIGH) — AC Story 1.5
     if (biometricResult.fraudAlertLevel === 'HIGH') {
@@ -78,6 +170,8 @@ export async function POST(request: NextRequest) {
           metadata: {
             livenessScore: biometricResult.livenessScore,
             fraudAlertLevel: biometricResult.fraudAlertLevel,
+            aiEstimatedAge: biometricResult.aiEstimatedAge,
+            aiEstimatedGender: biometricResult.aiEstimatedGender,
           },
         },
       })
@@ -114,10 +208,14 @@ export async function POST(request: NextRequest) {
       data: { userId, refreshToken, expiresAt, ipAddress, userAgent },
     })
 
-    // Atualiza lastLogin + biometricVerified
+    // Atualiza lastLogin + biometricVerified + documentVerified (se documento foi comparado)
     await prisma.user.update({
       where: { id: userId },
-      data: { lastLogin: new Date(), biometricVerified: true },
+      data: {
+        lastLogin: new Date(),
+        biometricVerified: true,
+        ...(documentBuffer && { documentVerified: biometricResult.documentMatch }),
+      },
     })
 
     await prisma.auditLog.create({
@@ -128,7 +226,12 @@ export async function POST(request: NextRequest) {
         userAgent,
         ipAddress,
         status: 'SUCCESS',
-        metadata: { similarityScore: biometricResult.similarityScore },
+        metadata: {
+          similarityScore: biometricResult.similarityScore,
+          aiEstimatedAge: biometricResult.aiEstimatedAge,
+          aiEstimatedGender: biometricResult.aiEstimatedGender,
+          documentMatch: biometricResult.documentMatch,
+        },
       },
     })
 

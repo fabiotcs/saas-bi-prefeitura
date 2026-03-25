@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/store/auth.store'
@@ -25,6 +25,12 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [docFile, setDocFile] = useState<File | null>(null)
+  const [docLoading, setDocLoading] = useState(false)
+  const [docSuccess, setDocSuccess] = useState(false)
+  const [docError, setDocError] = useState('')
+  const [documentVerified, setDocumentVerified] = useState<boolean | null>(null)
+  const docInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (user) {
@@ -32,11 +38,14 @@ export default function ProfilePage() {
     }
   }, [user])
 
-  // Carregar telefone do servidor pois o store não persiste
+  // Carregar telefone e status do documento
   useEffect(() => {
     if (!user?.id) return
-    api.get<{ phone?: string }>(`/api/users/${user.id}`)
-      .then(({ data }) => setPhone(data.phone ?? ''))
+    api.get<{ phone?: string; documentVerified?: boolean }>(`/api/users/${user.id}`)
+      .then(({ data }) => {
+        setPhone(data.phone ?? '')
+        setDocumentVerified(data.documentVerified ?? false)
+      })
       .catch(() => {})
   }, [user?.id])
 
@@ -62,6 +71,29 @@ export default function ProfilePage() {
       setError(axiosErr.response?.data?.error ?? 'Erro ao salvar perfil.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDocumentUpload() {
+    if (!docFile || !user?.id) return
+    setDocLoading(true)
+    setDocError('')
+    setDocSuccess(false)
+    try {
+      const form = new FormData()
+      form.append('document', docFile)
+      await api.post(`/api/users/${user.id}/document-photo`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setDocSuccess(true)
+      setDocFile(null)
+      if (docInputRef.current) docInputRef.current.value = ''
+      setTimeout(() => setDocSuccess(false), 3000)
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } }
+      setDocError(axiosErr.response?.data?.error ?? 'Erro ao enviar documento.')
+    } finally {
+      setDocLoading(false)
     }
   }
 
@@ -137,6 +169,63 @@ export default function ProfilePage() {
           </Button>
         </div>
       </form>
+
+      {/* Seção de validação biométrica de documento */}
+      <div className="border-t pt-6 space-y-4">
+        <div>
+          <h2 className="text-base font-semibold">Documento de Identificação</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Envie a foto do seu RG ou CNH para validação biométrica automatizada.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium">Status:</span>
+          {documentVerified === null ? (
+            <span className="text-xs text-muted-foreground">Carregando...</span>
+          ) : documentVerified ? (
+            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+              Documento Validado
+            </span>
+          ) : (
+            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+              Pendente de Validação
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="docUpload">Foto do RG / CNH (frente)</Label>
+          <Input
+            id="docUpload"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            ref={docInputRef}
+            onChange={(e) => setDocFile(e.target.files?.[0] ?? null)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Formatos aceitos: JPEG, PNG, WEBP. Tamanho máximo: 5 MB.
+          </p>
+        </div>
+
+        {docError && (
+          <p className="text-sm text-destructive bg-destructive/10 rounded p-2">{docError}</p>
+        )}
+        {docSuccess && (
+          <p className="text-sm text-green-700 bg-green-50 rounded p-2">
+            Documento enviado com sucesso! A validação ocorrerá no próximo login biométrico.
+          </p>
+        )}
+
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!docFile || docLoading}
+          onClick={handleDocumentUpload}
+        >
+          {docLoading ? 'Enviando...' : 'Enviar Documento'}
+        </Button>
+      </div>
     </div>
   )
 }

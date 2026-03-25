@@ -11,10 +11,13 @@ export interface BiometricResult {
   confidenceLevel: number
   fraudAlertLevel: 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH'
   aiEstimatedAge?: number
+  aiEstimatedGender?: string
+  documentMatch: boolean
+  documentSimilarityScore?: number
 }
 
 export interface BiometricProvider {
-  verify(faceImageBuffer: Buffer, referenceImageUrl?: string): Promise<BiometricResult>
+  verify(faceImageBuffer: Buffer, referenceImageUrl?: string, documentImageBuffer?: Buffer): Promise<BiometricResult>
 }
 
 /**
@@ -66,11 +69,46 @@ export function assessLivenessFromBuffer(imageBuffer: Buffer): number {
 }
 
 /**
+ * Estima faixa etária a partir da variância de pixels.
+ * Pele jovem (< 30 anos) tende a textura mais uniforme; pele madura tem maior variância.
+ * Produção: substituir por modelo de IA real (ex: AWS Rekognition DetectFaces).
+ */
+export function estimateAgeFromBuffer(imageBuffer: Buffer): number {
+  const variance = assessLivenessFromBuffer(imageBuffer)
+  // Mapeia variância para faixa etária 20-65
+  const age = Math.round(20 + (variance / 100) * 45)
+  return Math.min(65, Math.max(20, age))
+}
+
+/**
+ * Estima gênero a partir de checksum de bytes do buffer.
+ * PoC determinístico — produção usa AWS Rekognition DetectFaces.Gender.
+ */
+export function estimateGenderFromBuffer(imageBuffer: Buffer): string {
+  if (imageBuffer.length === 0) return 'UNKNOWN'
+  const checksum = imageBuffer.slice(0, 64).reduce((a, b) => a + b, 0)
+  return checksum % 2 === 0 ? 'MASCULINO' : 'FEMININO'
+}
+
+/**
+ * Compara similaridade entre selfie e foto do documento.
+ * PoC usa correlação de variância; produção usa FaceMatch do Rekognition.
+ */
+export function compareWithDocument(selfieBuffer: Buffer, docBuffer: Buffer): number {
+  if (selfieBuffer.length === 0 || docBuffer.length === 0) return 0
+  const selfieVariance = assessLivenessFromBuffer(selfieBuffer)
+  const docVariance = assessLivenessFromBuffer(docBuffer)
+  const diff = Math.abs(selfieVariance - docVariance)
+  // Similaridade inversa à diferença: 0 diff = 100%, 100 diff = 0%
+  return Math.max(0, Math.round(100 - diff))
+}
+
+/**
  * MockBiometricProvider — PoC com liveness detection real via análise de textura.
  * Produção: substituir por AwsRekognitionProvider.
  */
 export class MockBiometricProvider implements BiometricProvider {
-  async verify(faceImageBuffer: Buffer, _referenceImageUrl?: string): Promise<BiometricResult> {
+  async verify(faceImageBuffer: Buffer, _referenceImageUrl?: string, documentImageBuffer?: Buffer): Promise<BiometricResult> {
     // Liveness real: análise de variância de pixels
     const livenessScore = assessLivenessFromBuffer(faceImageBuffer)
 
@@ -80,13 +118,28 @@ export class MockBiometricProvider implements BiometricProvider {
     const fraudAlertLevel = calculateFraudAlertLevel(livenessScore, similarityScore)
     const match = fraudAlertLevel !== 'HIGH' && similarityScore >= 60
 
+    // Parâmetros de IA
+    const aiEstimatedAge = estimateAgeFromBuffer(faceImageBuffer)
+    const aiEstimatedGender = estimateGenderFromBuffer(faceImageBuffer)
+
+    // Comparação com documento (se disponível)
+    let documentMatch = false
+    let documentSimilarityScore: number | undefined
+    if (documentImageBuffer && documentImageBuffer.length > 0) {
+      documentSimilarityScore = compareWithDocument(faceImageBuffer, documentImageBuffer)
+      documentMatch = documentSimilarityScore >= 60
+    }
+
     return {
       match,
       similarityScore: similarityScore / 100,
       livenessScore: livenessScore / 100,
       confidenceLevel: (livenessScore * 0.4 + similarityScore * 0.6) / 100,
       fraudAlertLevel,
-      aiEstimatedAge: 35,
+      aiEstimatedAge,
+      aiEstimatedGender,
+      documentMatch,
+      documentSimilarityScore: documentSimilarityScore !== undefined ? documentSimilarityScore / 100 : undefined,
     }
   }
 }
