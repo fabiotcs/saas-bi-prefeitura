@@ -72,8 +72,16 @@ export async function getFinancialSummary(id: string) {
     budgetAllocated: number
     budgetUsed: number
     budgetByCommitment: number
+    commitmentUsedValue: number
+    commitmentCount: number
     usedInOrders: number
     distributedToSub: number
+    subCount: number
+    subUsed: number
+    available: number
+    percentCommitted: number
+    percentUsed: number
+    subSecretaries: { id: string; name: string; budgetAllocated: number; budgetUsed: number }[]
   }>(`/api/secretaries/${id}/financial-summary`)
   return data
 }

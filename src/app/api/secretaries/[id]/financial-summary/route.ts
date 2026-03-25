@@ -24,20 +24,53 @@ export async function GET(
   const secretary = await prisma.secretary.findUnique({
     where: { id: params.id },
     include: {
-      subSecretaries: { select: { budgetAllocated: true, budgetUsed: true } },
+      subSecretaries: { select: { id: true, name: true, budgetAllocated: true, budgetUsed: true } },
     },
   })
 
   if (!secretary) return NextResponse.json({ error: 'Secretaria não encontrada' }, { status: 404 })
 
-  const distributedToSub = secretary.subSecretaries.reduce((sum: number, sub: { budgetAllocated: number }) => sum + sub.budgetAllocated, 0)
+  // 1. Valor destinado por empenho — soma dos BudgetCommitments ATIVOS
+  const commitments = await prisma.budgetCommitment.findMany({
+    where: { secretaryId: params.id, status: 'ACTIVE' },
+    select: { value: true, usedValue: true },
+  })
+  const budgetByCommitment = commitments.reduce((sum, c) => sum + c.value, 0)
+  const commitmentUsedValue = commitments.reduce((sum, c) => sum + c.usedValue, 0)
+
+  // 2. Valor utilizado em pedidos — soma de invoices PAGAS desta secretaria
+  const paidInvoices = await prisma.invoice.aggregate({
+    where: { secretaryId: params.id, status: 'PAID' },
+    _sum: { totalPaid: true },
+  })
+  const usedInOrders = paidInvoices._sum.totalPaid ?? 0
+
+  // 3. Valor distribuído para subsecretárias — soma do budgetAllocated das subs
+  const distributedToSub = secretary.subSecretaries.reduce((sum, sub) => sum + sub.budgetAllocated, 0)
+  const subUsed = secretary.subSecretaries.reduce((sum, sub) => sum + sub.budgetUsed, 0)
+
+  // 4. Saldo disponível
+  const available = secretary.budgetAllocated - budgetByCommitment - distributedToSub
 
   return NextResponse.json({
     budgetAllocated: secretary.budgetAllocated,
     budgetUsed: secretary.budgetUsed,
-    budgetByCommitment: secretary.budgetAllocated,
-    usedInOrders: secretary.budgetUsed,
+    // Empenho
+    budgetByCommitment,
+    commitmentUsedValue,
+    commitmentCount: commitments.length,
+    // Pedidos
+    usedInOrders,
+    // Subsecretárias
     distributedToSub,
+    subCount: secretary.subSecretaries.length,
+    subUsed,
+    subSecretaries: secretary.subSecretaries,
+    // Saldo
+    available: Math.max(available, 0),
+    percentCommitted: secretary.budgetAllocated > 0
+      ? Math.round((budgetByCommitment / secretary.budgetAllocated) * 100)
+      : 0,
     percentUsed: secretary.budgetAllocated > 0
       ? Math.round((secretary.budgetUsed / secretary.budgetAllocated) * 100)
       : 0,
