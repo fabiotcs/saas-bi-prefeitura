@@ -11,12 +11,18 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
       }
     },
     "production": {
       "distribution": "store",
       "ios": {
         "buildConfiguration": "Release"
+      },
+      "android": {
+        "buildType": "app-bundle"
       }
     }
   },
@@ -26,6 +32,10 @@
         "appleId": "dev@prefeitura-aracuai.mg.gov.br",
         "ascAppId": "PLACEHOLDER_APP_ID",
         "appleTeamId": "PLACEHOLDER_TEAM_ID"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./google-service-account.json",
+        "track": "production"
       }
     }
   }
