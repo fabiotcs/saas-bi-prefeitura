@@ -1,0 +1,43 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3333:3333"
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/saas_bi_prefeitura
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-32-chars-min}
+      NODE_ENV: production
+      LIVENESS_MIN_SCORE: ${LIVENESS_MIN_SCORE:-0.6}
+      SIMILARITY_MIN_SCORE: ${SIMILARITY_MIN_SCORE:-0.7}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - saas-network
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: saas_bi_prefeitura
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - saas-network
+
+volumes:
+  postgres_data:
+
+networks:
+  saas-network:
+    driver: bridge

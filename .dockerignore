@@ -1,0 +1,15 @@
+.git
+.gitignore
+.env*
+!.env.example
+node_modules
+.next
+.aiox
+.aiox-core
+docs
+mobile
+*.md
+Dockerfile
+docker-compose*.yml
+.dockerignore
+npm-debug.log*

@@ -10,6 +10,25 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'SaaS BI — Prefeitura de Araçuaí/MG',
   description: 'Sistema de Gestão de Compras, Estoque e Auditoria — Pregão 008/2026',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SaaS BI',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+  },
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#1E40AF',
 }
 
 async function getBrandConfig() {
